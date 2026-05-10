@@ -1,0 +1,22 @@
+services:
+  hn-digest:
+    build: .
+    container_name: hn-digest
+    restart: unless-stopped
+    environment:
+      - SITE_URL=https://HackerNews.mrityunjay.dev
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_SCORE_THRESHOLD=30
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=gemini-3.1-flash-lite
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - DISABLE_GEMINI=0
+      - DISABLE_OPENROUTER=0
+      - DISABLE_TRANSLATION=1
+      - DISABLE_ADS=1
+    volumes:
+      - ./output:/app/output
+      - hn-data:/app/data
+
+volumes:
+  hn-data:

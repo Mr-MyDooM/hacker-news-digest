@@ -1,0 +1,19 @@
+{
+  "name": "Hacker News Summary",
+  "short_name": "HN Digest",
+  "description": "AI-powered summaries of top Hacker News stories",
+  "start_url": "/",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "display": "standalone",
+  "scope": "/",
+  "categories": ["news", "technology"],
+  "icons": [
+    {
+      "src": "/static/icon-200.png",
+      "type": "image/png",
+      "sizes": "200x200",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,168 @@
+package template
+
+import (
+	"embed"
+	"fmt"
+	"html/template"
+	"io"
+	"strings"
+	"time"
+
+	"github.com/mj/hacker-news-digest/config"
+	"github.com/mj/hacker-news-digest/db"
+	"github.com/mj/hacker-news-digest/hn"
+)
+
+//go:embed *.gohtml
+var templateFS embed.FS
+
+type PageData struct {
+	NewsList          []*hn.News
+	LastUpdated       time.Time
+	Lang              string
+	DailyLinks        []string
+	Path              string
+	Site              string
+	AdsenseID         string
+	DisableAds        bool
+	DisableTranslation bool
+}
+
+func Render(data *PageData) (string, error) {
+	funcMap := template.FuncMap{
+		"slug": func(n *hn.News) string {
+			return n.Slug()
+		},
+		"truncateSummary": func(s string, m db.Model) string {
+			if m.CanTruncate() && len([]rune(s)) > 400 {
+				return string([]rune(s)[:400]) + " ..."
+			}
+			return s
+		},
+		"safeHTML": func(s string) template.HTML {
+			return template.HTML(s)
+		},
+		"formatTime": func(t time.Time) string {
+			return t.Format("2006-01-02 15:04:05 MST")
+		},
+		"timeAgo": func(t time.Time) string {
+			d := time.Since(t)
+			switch {
+			case d < time.Minute:
+				return "just now"
+			case d < time.Hour:
+				return fmt.Sprintf("%d minutes ago", int(d.Minutes()))
+			case d < 24*time.Hour:
+				return fmt.Sprintf("%d hours ago", int(d.Hours()))
+			default:
+				return fmt.Sprintf("%d days ago", int(d.Hours()/24))
+			}
+		},
+		"domain": func(url string) string {
+			url = strings.TrimPrefix(url, "https://")
+			url = strings.TrimPrefix(url, "http://")
+			parts := strings.SplitN(url, "/", 2)
+			return strings.TrimPrefix(parts[0], "www.")
+		},
+		"hasPrefix":   strings.HasPrefix,
+		"join":        strings.Join,
+		"titleBadge": func(title string) template.HTML {
+			var cls, label string
+			switch {
+			case strings.HasPrefix(title, "Show HN:"):
+				cls, label = "show-hn", "Show HN"
+			case strings.HasPrefix(title, "Ask HN:"):
+				cls, label = "ask-hn", "Ask HN"
+			case strings.HasPrefix(title, "Launch HN:"):
+				cls, label = "launch-hn", "Launch HN"
+			}
+			if cls == "" {
+				return ""
+			}
+			return template.HTML(fmt.Sprintf(`<span class="story-badge badge-%s">%s</span>`, cls, label))
+		},
+		"mod":     func(a, b int) int { return a % b },
+		"safeCSS": func(s string) template.CSS { return template.CSS(s) },
+
+		"cleanTitle": func(title string) string {
+			trimmed := title
+			for _, prefix := range []string{"Show HN:", "Ask HN:", "Launch HN:"} {
+				if strings.HasPrefix(trimmed, prefix) {
+					return strings.TrimSpace(strings.TrimPrefix(trimmed, prefix))
+				}
+			}
+			return trimmed
+		},
+	}
+
+	tmpl, err := template.New("base.gohtml").Funcs(funcMap).ParseFS(templateFS, "*.gohtml")
+	if err != nil {
+		return "", fmt.Errorf("parse templates: %w", err)
+	}
+
+	var buf strings.Builder
+	if err := tmpl.ExecuteTemplate(&buf, "base.gohtml", data); err != nil {
+		return "", fmt.Errorf("execute template: %w", err)
+	}
+
+	return buf.String(), nil
+}
+
+func RenderFeed(newsList []*hn.News, siteURL string) string {
+	now := time.Now().In(config.IST)
+	var b strings.Builder
+	b.WriteString(`<?xml version="1.0" encoding="UTF-8"?>` + "\n")
+	b.WriteString(`<feed xmlns="http://www.w3.org/2005/Atom">` + "\n")
+	b.WriteString(fmt.Sprintf("  <title>Hacker News Summary</title>\n"))
+	b.WriteString(fmt.Sprintf("  <updated>%s</updated>\n", now.Format(time.RFC3339)))
+	b.WriteString(fmt.Sprintf("  <id>%s/</id>\n", siteURL))
+	b.WriteString(fmt.Sprintf("  <link href=\"%s/feed.xml\" rel=\"self\"/>\n", siteURL))
+	b.WriteString(fmt.Sprintf("  <author><name>Hacker News Digest</name><uri>%s</uri></author>\n", siteURL))
+
+	for _, news := range newsList {
+		if news.Score <= 20 {
+			continue
+		}
+		imgTag := ""
+		if news.Image != nil {
+			imgTag = fmt.Sprintf("<img src=\"%s\" style=\"%s\"/><br/>", news.Image.URL, news.Image.GetSizeStyle(220))
+		}
+		summaryLink := fmt.Sprintf(" <a href=\"%s/#%s\">[summary]</a>", siteURL, news.Slug())
+		commentsLink := ""
+		if news.CommentURL != "" {
+			commentsLink = fmt.Sprintf(" <a href=\"%s\">[comments]</a>", news.CommentURL)
+		}
+
+		content := imgTag + news.Summary + summaryLink + commentsLink
+
+		b.WriteString(fmt.Sprintf("  <entry>\n"))
+		b.WriteString(fmt.Sprintf("    <title>%s</title>\n", escapeXML(news.Title)))
+		b.WriteString(fmt.Sprintf("    <link href=\"%s\"/>\n", escapeXML(news.URL)))
+		b.WriteString(fmt.Sprintf("    <id>%s/#%s</id>\n", siteURL, news.Slug()))
+		b.WriteString(fmt.Sprintf("    <updated>%s</updated>\n", news.SubmitTime.Format(time.RFC3339)))
+		b.WriteString(fmt.Sprintf("    <content type=\"html\"><![CDATA[%s]]></content>\n", content))
+		if news.Author != "" {
+			b.WriteString(fmt.Sprintf("    <author><name>%s</name></author>\n", escapeXML(news.Author)))
+		}
+		b.WriteString(fmt.Sprintf("  </entry>\n"))
+	}
+
+	b.WriteString("</feed>\n")
+	return b.String()
+}
+
+func escapeXML(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	s = strings.ReplaceAll(s, "\"", "&quot;")
+	return s
+}
+
+type writeWrapper struct {
+	w io.Writer
+}
+
+func (w writeWrapper) Write(p []byte) (int, error) {
+	return w.w.Write(p)
+}

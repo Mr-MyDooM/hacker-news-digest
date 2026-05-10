@@ -1,0 +1,255 @@
+<!DOCTYPE HTML>
+<html lang="{{.Lang}}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noarchive, max-snippet:-1, max-image-preview:none">
+    <meta name="description" content="AI-powered summaries of top Hacker News stories.">
+    <meta name="referrer" content="no-referrer-when-downgrade">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://maxcdn.bootstrapcdn.com; script-src 'self' 'unsafe-inline' https://ajax.googleapis.com https://maxcdn.bootstrapcdn.com https://static.cloudflareinsights.com https://pagead2.googlesyndication.com;">
+
+    {{if and (not $.DisableAds) $.AdsenseID}}
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={{$.AdsenseID}}" crossorigin="anonymous"></script>
+    {{end}}
+
+    <title>Hacker News Summary</title>
+
+    <link rel="alternate" type="application/atom+xml" href="/feed.xml" title="Hacker News Summary">
+    <link rel="shortcut icon" href="/static/favicon.ico">
+    <link rel="bookmark" href="/static/favicon.ico">
+    <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <meta name="theme-color" content="#0d1117" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#f5f0eb" media="(prefers-color-scheme: light)">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/font-awesome.min.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+
+    <script>
+    (function() {
+        var saved = localStorage.getItem('theme');
+        if (saved === 'light' || saved === 'dark') {
+            document.documentElement.setAttribute('data-theme', saved);
+            return;
+        }
+        // CSS media query handles system pref natively; only need JS for time fallback
+        // when prefers-color-scheme is 'no-preference'
+        if (window.matchMedia) {
+            if (window.matchMedia('(prefers-color-scheme: dark)').matches) return;
+            if (window.matchMedia('(prefers-color-scheme: light)').matches) return;
+        }
+        // Fallback: local time (6am-18pm = light)
+        var h = new Date().getHours();
+        document.documentElement.setAttribute('data-theme', (h >= 6 && h < 18) ? 'light' : 'dark');
+    })();
+    </script>
+
+    <script>
+    function favicon_fall_back(el) {
+        el.onerror = null;
+        el.src = '/static/favicon.ico';
+    }
+    function illustration_fall_back(el) {
+        el.onerror = null;
+        el.remove();
+    }
+    </script>
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Hacker News Summary",
+        "url": "{{.Site}}"
+    }
+    </script>
+
+    <meta property="og:title" content="Hacker News Summary">
+    <meta property="og:description" content="AI-powered summaries of top Hacker News stories">
+    <meta property="og:url" content="{{.Site}}">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Hacker News Summary">
+    <meta name="twitter:description" content="AI-powered summaries of top Hacker News stories">
+</head>
+<body>
+<div class="scanlines"></div>
+<div class="container">
+    <nav class="navbar navbar-default navbar-fixed-top" role="navigation">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Hacker News Summary</a>
+        </div>
+        <div class="collapse navbar-collapse" id="navbar">
+            <ul class="nav navbar-nav nav-pills">
+                <li><a href="/">Front</a></li>
+                <li><a href="/daily/{{if .DailyLinks}}{{(index .DailyLinks 0)}}{{end}}/">Past</a></li>
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Archive <span class="caret"></span></a>
+                    <ul class="dropdown-menu" role="menu">
+                        {{range $i, $link := .DailyLinks}}
+                            {{if lt $i 10}}
+                                <li><a href="/daily/{{$link}}/">{{$link}}</a></li>
+                            {{else if eq $i 10}}
+                                <li class="divider"></li>
+                                <li><a href="#" id="more-archive">More...</a></li>
+                            {{end}}
+                        {{end}}
+                    </ul>
+                </li>
+                <li class="dropdown sort-dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Sort <span class="caret"></span></a>
+                    <ul class="dropdown-menu" role="menu">
+                        <li><a href="#" data-sort="rank">HN Rank</a></li>
+                        <li><a href="#" data-sort="score">Points</a></li>
+                        <li><a href="#" data-sort="comments">Comments</a></li>
+                        <li><a href="#" data-sort="time">Submit Time</a></li>
+                    </ul>
+                </li>
+                <li class="dropdown filter-dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Filter <span class="caret"></span></a>
+                    <ul class="dropdown-menu" role="menu">
+                        <li><a href="#" data-filter="10">Top 10</a></li>
+                        <li><a href="#" data-filter="20">Top 20</a></li>
+                        <li><a href="#" data-filter="50">Top 50</a></li>
+                        <li><a href="#" data-filter="all">All</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="#" id="search-toggle" title="Search" aria-label="Search">
+                        <i class="fa fa-search"></i>
+                    </a>
+                </li>
+                <li>
+                    <button id="theme-toggle" title="Toggle theme" aria-label="Toggle theme">
+                        <i class="fa fa-moon-o"></i>
+                    </button>
+                </li>
+            </ul>
+            <div id="search-box" class="hidden">
+                <input type="text" id="search-input" placeholder="Search titles and summaries..." aria-label="Search stories">
+                <button id="search-close" aria-label="Close search">&times;</button>
+            </div>
+        </div>
+    </nav>
+
+    {{range $i, $news := .NewsList}}
+    {{if and (not $.DisableAds) $.AdsenseID (gt $i 0) (eq (mod $i 4) 0)}}
+    <div class="post-item ad-unit">
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="{{$.AdsenseID}}"
+             data-ad-slot="REPLACE_WITH_AD_UNIT_ID"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+    {{end}}
+    <article class="post-item" data-rank="{{$news.Rank}}" data-points="{{$news.Score}}" data-comments="{{$news.CommentCount}}" data-time="{{$news.SubmitTime.Unix}}">
+        <div class="qrcode"></div>
+        <div class="post-title">
+            <h3 id="{{$news.Slug}}">
+                {{titleBadge $news.Title}}
+                <a href="{{$news.URL}}" target="_blank" rel="noopener noreferrer">{{cleanTitle $news.Title}}</a>
+            </h3>
+        </div>
+        <div class="post-meta">
+            <span class="label label-primary score">{{$news.Score}}</span>
+            <span class="author-link">
+                <a href="https://news.ycombinator.com/user?id={{$news.Author}}">{{$news.Author}}</a>
+            </span>
+            <span class="summit-time" data-submitted="{{$news.SubmitTime.Format "2006-01-02T15:04:05Z"}}">{{$news.SubmitTime.Format "02 Jan 2006 15:04"}} IST</span>
+            <span class="host">
+                <img src="https://www.google.com/s2/favicons?domain={{domain $news.URL}}" width="16" height="16" alt="favicon"
+                     onerror="favicon_fall_back(this);">
+                {{domain $news.URL}}
+            </span>
+            {{if $news.Summary}}<span class="label label-info summary-model">{{$news.SummarizedBy}}</span>{{end}}
+            <span class="reading-time" data-slug="{{$news.Slug}}"></span>
+            <button class="share-icon" title="Share permalink" data-slug="{{$news.Slug}}" aria-label="Share permalink">
+                <i class="fa fa-share-alt"></i>
+            </button>
+            {{if $news.CommentURL}}
+            <span class="comment">
+                <a href="{{$news.CommentURL}}" target="_blank" rel="noopener noreferrer">
+                    <i class="fa fa-comment"></i> {{$news.CommentCount}}
+                </a>
+            </span>
+            {{end}}
+        </div>
+        {{if or $news.Summary $news.Image}}
+        <div class="post-summary">
+            {{if $news.Image}}
+            <div class="feature-image">
+                <img src="{{$news.Image.URL}}" style="{{safeCSS ($news.Image.GetSizeStyle 180)}}" alt="feature image" loading="lazy">
+            </div>
+            {{end}}
+            {{if $news.Summary}}
+            <div class="summary-body" data-slug="{{$news.Slug}}">
+                {{if $news.SummarizedBy.NeedEscape}}
+                <pre class="summary-text">{{$news.Summary}}</pre>
+                {{else}}
+                <p class="summary-text">{{$news.Summary}}</p>
+                {{end}}
+                <button class="summary-toggle" data-slug="{{$news.Slug}}" style="display:none">Show more</button>
+            </div>
+            {{end}}
+        </div>
+        {{end}}
+    </article>
+    {{end}}
+
+    <footer class="site-footer">
+        <div class="row">
+            <div class="col-sm-4">
+                <a href="/feed.xml"><i class="fa fa-rss"></i> RSS Feed</a>
+            </div>
+            <div class="col-sm-4 text-center keyboard-hints">
+                <span title="Navigate stories"><kbd>j</kbd> <kbd>k</kbd></span>
+                <span title="Open story"><kbd>o</kbd></span>
+                <span title="Open comments"><kbd>c</kbd></span>
+                <span title="Search"><kbd>/</kbd></span>
+            </div>
+            <div class="col-sm-4 text-right">
+                Last updated: <span>{{.LastUpdated.Format "2006-01-02 15:04:05"}} IST</span>
+            </div>
+        </div>
+    </footer>
+</div>
+
+<div class="modal fade" id="img-preview-modal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="modal-image" src="" alt="preview">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script src="/static/js/jquery.scrollUp.min.js"></script>
+<script src="/static/js/html5shiv.min.js"></script>
+<script src="/static/js/respond.min.js"></script>
+<script src="/static/js/jquery.lazyload.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script src="/static/js/hn.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(function(err) {
+        console.log('SW registration failed:', err);
+    });
+}
+</script>
+</body>
+</html>

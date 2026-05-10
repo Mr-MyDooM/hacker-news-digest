@@ -1,0 +1,27 @@
+# Go binaries
+hndigest
+*.exe
+
+# SQLite database
+*.db
+*.sqlite
+
+# Output directory (generated site)
+output/
+
+# Environment files
+.env
+
+# Agent/IDE config
+.gstack/
+.memsearch/
+.playwright-mcp/
+.claude/
+.Jules/
+AGENTS.md
+
+# OS files
+.DS_Store
+
+# Logs
+*.log
