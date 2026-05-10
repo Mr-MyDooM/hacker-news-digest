@@ -149,29 +149,35 @@ func (n *News) Summarize(content string) {
 	n.Cache = cached
 
 	if cached != nil && cached.Summary != "" {
-		n.Summary = cached.Summary
-		n.SummarizedBy = cached.Model
-		// Restore cached image if we don't already have one
-		if n.Image == nil && cached.ImageJSON.Valid && cached.ImageJSON.String != "" {
-			var img extractor.WebImage
-			if json.Unmarshal([]byte(cached.ImageJSON.String), &img) == nil && img.URL != "" {
-				n.Image = &img
-			}
-		}
-		// Persist image into cache if we just fetched one and cache didn't have it
-		if n.Image != nil && (!cached.ImageJSON.Valid || cached.ImageJSON.String == "") {
-			if data, err := json.Marshal(n.Image); err == nil {
-				cached.ImageJSON.String = string(data)
-				cached.ImageJSON.Valid = true
-				cached.ImageName.String = imageFilename(n.Image.URL)
-				cached.ImageName.Valid = true
-				if err := db.PutSummary(cached); err != nil {
-					log.Printf("Failed to update image cache for %s: %v", n.URL, err)
+		// If cached model is non-final (e.g. prefix from a rate-limited run)
+		// and score warrants LLM summarization, retry.
+		if !cached.Model.IsFinal() && n.Score >= cfg.LocalLLMScore {
+			log.Printf("Cache hit for %s, model %s (non-final, will retry LLM)", n.URL, cached.Model)
+		} else {
+			n.Summary = cached.Summary
+			n.SummarizedBy = cached.Model
+			// Restore cached image if we don't already have one
+			if n.Image == nil && cached.ImageJSON.Valid && cached.ImageJSON.String != "" {
+				var img extractor.WebImage
+				if json.Unmarshal([]byte(cached.ImageJSON.String), &img) == nil && img.URL != "" {
+					n.Image = &img
 				}
 			}
+			// Persist image into cache if we just fetched one and cache didn't have it
+			if n.Image != nil && (!cached.ImageJSON.Valid || cached.ImageJSON.String == "") {
+				if data, err := json.Marshal(n.Image); err == nil {
+					cached.ImageJSON.String = string(data)
+					cached.ImageJSON.Valid = true
+					cached.ImageName.String = imageFilename(n.Image.URL)
+					cached.ImageName.Valid = true
+					if err := db.PutSummary(cached); err != nil {
+						log.Printf("Failed to update image cache for %s: %v", n.URL, err)
+					}
+				}
+			}
+			log.Printf("Cache hit for %s, model %s", n.URL, cached.Model)
+			return
 		}
-		log.Printf("Cache hit for %s, model %s", n.URL, cached.Model)
-		return
 	}
 
 	var summary string

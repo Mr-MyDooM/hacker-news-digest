@@ -127,7 +127,7 @@ body::before {
     z-index: 2;
     max-width: 916px !important;
     padding: 0 1.5rem;
-    padding-top: 70px;
+    padding-top: 100px;
 }
 
 @media (min-width: 1200px) { .container { width: 916px !important; } }
@@ -316,7 +316,7 @@ body::before {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.15rem;
+    gap: 0.2rem;
     font-size: 0.78rem;
     color: var(--text-dim);
     margin: 0.3rem 0 0.6rem;
@@ -370,15 +370,15 @@ body::before {
 .post-meta .label-info,
 .post-meta .summary-model {
     display: inline-block;
-    padding: 0.1em 0.45em;
-    font-size: 0.72rem;
+    padding: 0 0.3em;
+    font-size: 0.78rem;
     font-family: 'JetBrains Mono', monospace;
     color: var(--cyan) !important;
     background: rgba(0, 212, 170, 0.08);
     border: 1px solid rgba(0, 212, 170, 0.15);
     border-radius: 4px;
-    vertical-align: middle;
-    line-height: 1.5;
+    vertical-align: baseline;
+    line-height: inherit;
 }
 
 /* Domain + favicon */
@@ -401,6 +401,9 @@ body::before {
 .post-meta .share-icon:hover { opacity: 1; color: var(--neon) !important; }
 
 /* Comments link */
+.post-meta .comment {
+    margin-left: 0.15rem;
+}
 .post-meta .comment a {
     color: var(--text-dim) !important;
     display: inline-flex;

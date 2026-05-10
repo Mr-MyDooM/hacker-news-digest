@@ -188,7 +188,7 @@
         <div class="post-summary">
             {{if $news.Image}}
             <div class="feature-image">
-                <img src="{{$news.Image.URL}}" style="{{safeCSS ($news.Image.GetSizeStyle 180)}}" alt="feature image" loading="lazy">
+                <img src="{{$news.Image.URL}}" alt="feature image" loading="lazy">
             </div>
             {{end}}
             {{if $news.Summary}}

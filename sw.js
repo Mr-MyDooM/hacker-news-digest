@@ -36,6 +36,7 @@ self.addEventListener('activate', function(e) {
 
 self.addEventListener('fetch', function(e) {
   var url = new URL(e.request.url);
+  if (url.origin !== location.origin) return;
   if (url.pathname === '/' || url.pathname.startsWith('/daily/') || url.pathname.startsWith('/image/')) {
     e.respondWith(
       fetch(e.request).catch(function() { return caches.match(e.request); })
@@ -43,6 +44,6 @@ self.addEventListener('fetch', function(e) {
     return;
   }
   e.respondWith(
-    caches.match(e.request).then(function(r) { return r || fetch(e.request); })
+    caches.match(e.request).then(function(r) { return r || fetch(e.request).catch(function() {}); })
   );
 });
