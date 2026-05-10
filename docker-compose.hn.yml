@@ -13,7 +13,8 @@ services:
       - DISABLE_GEMINI=0
       - DISABLE_OPENROUTER=0
       - DISABLE_TRANSLATION=1
-      - DISABLE_ADS=1
+      - DISABLE_ADS=0
+      - ADSENSE_ID=ca-pub-4263166242520386
     volumes:
       - ./output:/app/output
       - hn-data:/app/data
