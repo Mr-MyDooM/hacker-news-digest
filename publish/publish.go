@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/mj/hacker-news-digest/config"
@@ -28,9 +29,7 @@ func GenFrontpage() {
 
 	log.Printf("Found %d stories", len(newsList))
 
-	for _, news := range newsList {
-		news.PullContent()
-	}
+	pullContentConcurrent(newsList)
 
 	genPage(newsList, "index.html")
 	genFeed(newsList, "feed.xml")
@@ -49,11 +48,30 @@ func GenDaily(updatableDays int) {
 	for dateKey, items := range dailyItems {
 		for i, item := range items {
 			item.Rank = i + 1
-			item.PullContent()
 		}
+		pullContentConcurrent(items)
 		path := filepath.Join("daily", dateKey, "index.html")
 		genPage(items, path)
 	}
+}
+
+// pullContentConcurrent fetches content and generates summaries for a list of news items concurrently.
+// It uses a semaphore to limit the number of concurrent requests to avoid overwhelming external sites.
+func pullContentConcurrent(newsList []*hn.News) {
+	const maxConcurrent = 10
+	sem := make(chan struct{}, maxConcurrent)
+	var wg sync.WaitGroup
+
+	for _, news := range newsList {
+		wg.Add(1)
+		go func(n *hn.News) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			n.PullContent()
+		}(news)
+	}
+	wg.Wait()
 }
 
 func genPage(newsList []*hn.News, path string) {
