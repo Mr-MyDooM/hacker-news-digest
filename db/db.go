@@ -73,6 +73,8 @@ const (
 	ModelOpenRouter  Model = "OpenRouter"
 )
 
+func (m Model) IsPrefix() bool { return m == ModelPrefix }
+
 func (m Model) CanTruncate() bool {
 	return m != ModelOpenAI && m != ModelEmbed
 }
