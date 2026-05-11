@@ -166,7 +166,7 @@
                 <i class="fa fa-user"></i>
                 <a href="https://news.ycombinator.com/user?id={{$news.Author}}">{{$news.Author}}</a>
             </span>
-            <span class="summit-time" data-submitted="{{$news.SubmitTime.UTC.Format "2006-01-02T15:04:05Z"}}" title="{{$news.SubmitTime.Format "02 Jan 2006 15:04"}} IST"><i class="fa fa-clock-o"></i> {{timeAgo $news.SubmitTime}}</span>
+            <span class="summit-time" data-submitted="{{$news.SubmitTime.UTC.Format "2006-01-02T15:04:05Z"}}" title="{{$news.SubmitTime.Format "02 Jan 2006 15:04"}} IST"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> {{timeAgo $news.SubmitTime}}</span>
             <span class="host">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                 <img src="https://www.google.com/s2/favicons?domain={{domain $news.URL}}" width="16" height="16" alt="favicon"
@@ -174,7 +174,7 @@
                 {{domain $news.URL}}
             </span>
             {{if $news.Summary}}<span class="label label-info summary-model"><i class="fa fa-ellipsis-h"></i> {{$news.SummarizedBy}}</span>{{end}}
-            <i class="fa fa-book"></i> <span class="reading-time" data-slug="{{$news.Slug}}"></span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> <span class="reading-time" data-slug="{{$news.Slug}}"></span>
             <button class="share-icon" title="Share permalink" data-slug="{{$news.Slug}}" aria-label="Share permalink">
                 <i class="fa fa-share-alt"></i>
             </button>

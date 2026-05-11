@@ -236,6 +236,15 @@ body::before {
 @media (max-width: 768px) {
     .navbar-nav { margin: 0 !important; }
     #theme-toggle { padding: 10px 10px; }
+    .container { padding-top: 130px; }
+}
+
+/* Navbar auto-hide */
+.navbar.navbar-fixed-top {
+    transition: transform 0.3s ease;
+}
+.navbar.navbar-fixed-top.nav-hidden {
+    transform: translateY(-100%);
 }
 
 /* Dropdowns */

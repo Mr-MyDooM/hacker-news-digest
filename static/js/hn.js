@@ -162,9 +162,25 @@ $.scrollUp({
     scrollTitle: 'Scroll to top'
 });
 
+// Navbar auto-hide on scroll
+(function() {
+    var lastY = window.scrollY;
+    var navbar = document.querySelector('.navbar.navbar-fixed-top');
+    if (!navbar) return;
+    window.addEventListener('scroll', function() {
+        var currentY = window.scrollY;
+        if (currentY > lastY && currentY > 80) {
+            navbar.classList.add('nav-hidden');
+        } else {
+            navbar.classList.remove('nav-hidden');
+        }
+        lastY = currentY;
+    }, { passive: true });
+})();
+
 // Feature image modal
-$('.post-item .post-summary .feature-image').click(function(e) {
-    PreviewImage($('img', this).attr('src'));
+$('.post-item .post-summary .feature-image img').click(function(e) {
+    PreviewImage($(this).attr('src'));
     return false;
 });
 
