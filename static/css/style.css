@@ -201,8 +201,7 @@ body::before {
     vertical-align: middle;
 }
 
-#theme-toggle i {
-    font-size: 1rem;
+#theme-toggle svg {
     color: var(--text-dim);
     transition: color 0.2s;
     line-height: 1;
