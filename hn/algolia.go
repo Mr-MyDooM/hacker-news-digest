@@ -11,19 +11,19 @@ import (
 const algoliaURL = "https://hn.algolia.com/api/v1/search_by_date"
 
 type algoliaResponse struct {
-	Hits []algoliaHit `json:"hits"`
-	NbPages int `json:"nbPages"`
+	Hits    []algoliaHit `json:"hits"`
+	NbPages int          `json:"nbPages"`
 }
 
 type algoliaHit struct {
-	ObjectID     string `json:"objectID"`
-	Title        string `json:"title"`
-	URL          string `json:"url"`
-	Points       int    `json:"points"`
-	Author       string `json:"author"`
-	CreatedAt    string `json:"created_at"`
-	NumComments  int    `json:"num_comments"`
-	AskHN        bool   `json:"ask_hn"`
+	ObjectID    string `json:"objectID"`
+	Title       string `json:"title"`
+	URL         string `json:"url"`
+	Points      int    `json:"points"`
+	Author      string `json:"author"`
+	CreatedAt   string `json:"created_at"`
+	NumComments int    `json:"num_comments"`
+	AskHN       bool   `json:"ask_hn"`
 }
 
 func GetDailyNews(updatableDays int) (map[string][]*News, error) {
@@ -38,8 +38,11 @@ func GetDailyNews(updatableDays int) (map[string][]*News, error) {
 			return nil, fmt.Errorf("algolia page %d: %w", page, err)
 		}
 		// Security: limit Algolia API response to 2MB
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2*1024*1024))
+		body, err := io.ReadAll(io.LimitReader(resp.Body, 2*1024*1024))
 		resp.Body.Close()
+		if err != nil {
+			return nil, fmt.Errorf("algolia page %d read: %w", page, err)
+		}
 
 		var ar algoliaResponse
 		if err := json.Unmarshal(body, &ar); err != nil {

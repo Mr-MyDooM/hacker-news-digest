@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mj/hacker-news-digest/config"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/mj/hacker-news-digest/config"
 )
 
 type Parser struct {

@@ -17,14 +17,14 @@ import (
 var templateFS embed.FS
 
 type PageData struct {
-	NewsList          []*hn.News
-	LastUpdated       time.Time
-	Lang              string
-	DailyLinks        []string
-	Path              string
-	Site              string
-	AdsenseID         string
-	DisableAds        bool
+	NewsList           []*hn.News
+	LastUpdated        time.Time
+	Lang               string
+	DailyLinks         []string
+	Path               string
+	Site               string
+	AdsenseID          string
+	DisableAds         bool
 	DisableTranslation bool
 }
 
@@ -51,11 +51,41 @@ func Render(data *PageData) (string, error) {
 			case d < time.Minute:
 				return "just now"
 			case d < time.Hour:
-				return fmt.Sprintf("%d minutes ago", int(d.Minutes()))
+				m := int(d.Minutes())
+				if m == 1 {
+					return "1 minute ago"
+				}
+				return fmt.Sprintf("%d minutes ago", m)
 			case d < 24*time.Hour:
-				return fmt.Sprintf("%d hours ago", int(d.Hours()))
+				h := int(d.Hours())
+				if h == 1 {
+					return "1 hour ago"
+				}
+				return fmt.Sprintf("%d hours ago", h)
+			case d < 7*24*time.Hour:
+				days := int(d.Hours() / 24)
+				if days == 1 {
+					return "1 day ago"
+				}
+				return fmt.Sprintf("%d days ago", days)
+			case d < 30*24*time.Hour:
+				weeks := int(d.Hours() / (24 * 7))
+				if weeks == 1 {
+					return "1 week ago"
+				}
+				return fmt.Sprintf("%d weeks ago", weeks)
+			case d < 365*24*time.Hour:
+				months := int(d.Hours() / (24 * 30))
+				if months == 1 {
+					return "1 month ago"
+				}
+				return fmt.Sprintf("%d months ago", months)
 			default:
-				return fmt.Sprintf("%d days ago", int(d.Hours()/24))
+				years := int(d.Hours() / (24 * 365))
+				if years == 1 {
+					return "1 year ago"
+				}
+				return fmt.Sprintf("%d years ago", years)
 			}
 		},
 		"domain": func(url string) string {
@@ -64,8 +94,8 @@ func Render(data *PageData) (string, error) {
 			parts := strings.SplitN(url, "/", 2)
 			return strings.TrimPrefix(parts[0], "www.")
 		},
-		"hasPrefix":   strings.HasPrefix,
-		"join":        strings.Join,
+		"hasPrefix": strings.HasPrefix,
+		"join":      strings.Join,
 		"titleBadge": func(title string) template.HTML {
 			var cls, label string
 			switch {

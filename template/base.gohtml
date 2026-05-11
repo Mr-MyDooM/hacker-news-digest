@@ -165,7 +165,7 @@
             <span class="author-link">
                 <a href="https://news.ycombinator.com/user?id={{$news.Author}}">{{$news.Author}}</a>
             </span>
-            <span class="summit-time" data-submitted="{{$news.SubmitTime.Format "2006-01-02T15:04:05Z"}}">{{$news.SubmitTime.Format "02 Jan 2006 15:04"}} IST</span>
+            <span class="summit-time" data-submitted="{{$news.SubmitTime.UTC.Format "2006-01-02T15:04:05Z"}}" title="{{$news.SubmitTime.Format "02 Jan 2006 15:04"}} IST">{{timeAgo $news.SubmitTime}}</span>
             <span class="host">
                 <img src="https://www.google.com/s2/favicons?domain={{domain $news.URL}}" width="16" height="16" alt="favicon"
                      onerror="favicon_fall_back(this);">
@@ -218,7 +218,7 @@
                 <span title="Search"><kbd>/</kbd></span>
             </div>
             <div class="col-sm-4 text-right">
-                Last updated: <span>{{.LastUpdated.Format "2006-01-02 15:04:05"}} IST</span>
+                Last updated: <span title="{{.LastUpdated.Format "2006-01-02 15:04:05 IST"}}">{{timeAgo .LastUpdated}}</span>
             </div>
         </div>
     </footer>

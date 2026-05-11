@@ -195,19 +195,26 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
         var d = new Date(dateStr);
         if (isNaN(d)) return null;
         var secs = Math.floor((Date.now() - d) / 1000);
-        if (secs < 60)  return secs + 's ago';
+        if (secs < 60)  return plural(secs, 'second') + ' ago';
         var mins = Math.floor(secs / 60);
-        if (mins < 60)  return mins + 'm ago';
+        if (mins < 60)  return plural(mins, 'minute') + ' ago';
         var hrs = Math.floor(mins / 60);
-        if (hrs < 24)   return hrs + 'h ago';
+        if (hrs < 24)   return plural(hrs, 'hour') + ' ago';
         var days = Math.floor(hrs / 24);
-        if (days < 30)  return days + 'd ago';
-        return null; // fall back to absolute
+        if (days < 7)   return plural(days, 'day') + ' ago';
+        var weeks = Math.floor(days / 7);
+        if (weeks < 5)  return plural(weeks, 'week') + ' ago';
+        var months = Math.floor(days / 30);
+        if (months < 12) return plural(months, 'month') + ' ago';
+        var years = Math.floor(days / 365);
+        return plural(years, 'year') + ' ago';
+    }
+    function plural(n, word) {
+        return n + ' ' + (n === 1 ? word : word + 's');
     }
     document.querySelectorAll('.summit-time[data-submitted]').forEach(function(el) {
         var rel = timeAgo(el.getAttribute('data-submitted'));
         if (rel) {
-            el.title = el.textContent.trim();
             el.textContent = rel;
         }
     });

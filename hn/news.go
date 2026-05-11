@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"strings"
-	"time"
 
 	"github.com/mj/hacker-news-digest/config"
 	"github.com/mj/hacker-news-digest/db"
@@ -13,9 +12,9 @@ import (
 )
 
 var (
-	cfg             *config.Config
-	openAIClient    *llm.OpenAIClient
-	geminiClient    *llm.GeminiClient
+	cfg              *config.Config
+	openAIClient     *llm.OpenAIClient
+	geminiClient     *llm.GeminiClient
 	openRouterClient *llm.OpenAIClient
 )
 
@@ -23,9 +22,11 @@ func Init(c *config.Config) {
 	cfg = c
 	if c.OpenAIAPIKey != "" {
 		openAIClient = llm.NewOpenAIClient(c.OpenAIAPIKey, c.OpenAIBase, c.OpenAIModel)
+		openAIClient.SetRateLimit(c.LLMRate)
 	}
 	if c.GeminiAPIKey != "" && !c.DisableGemini {
 		geminiClient = llm.NewGeminiClient(c.GeminiAPIKey, c.GeminiModel)
+		geminiClient.SetRateLimit(c.LLMRate)
 	}
 	if c.OpenRouterAPIKey != "" && !c.DisableOpenRouter {
 		models := c.OpenRouterModels
@@ -40,7 +41,7 @@ func Init(c *config.Config) {
 		}
 		if len(models) > 0 {
 			openRouterClient = llm.NewOpenAIClient(c.OpenRouterAPIKey, "https://openrouter.ai/api/v1", models...)
-			openRouterClient.SetRateLimit(2 * time.Second)
+			openRouterClient.SetRateLimit(c.LLMRate)
 		}
 	}
 }

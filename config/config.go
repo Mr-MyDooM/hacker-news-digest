@@ -15,16 +15,16 @@ type Config struct {
 	Debug bool
 	Site  string
 
-	OpenAIAPIKey  string
-	OpenAIBase    string
-	OpenAIKeys    []string
-	OpenAIModel   string
-	OpenAIScore   int
+	OpenAIAPIKey string
+	OpenAIBase   string
+	OpenAIKeys   []string
+	OpenAIModel  string
+	OpenAIScore  int
 
-	GeminiAPIKey    string
-	GeminiModel     string
-	GeminiScore     int
-	DisableGemini   bool
+	GeminiAPIKey  string
+	GeminiModel   string
+	GeminiScore   int
+	DisableGemini bool
 
 	OpenRouterAPIKey  string
 	OpenRouterModels  []string
@@ -32,17 +32,18 @@ type Config struct {
 
 	AdsenseID string
 
-	DisableLLaMA       bool
-	DisableTransformer bool
-	DisableTranslation bool
-	DisableAds         bool
+	DisableLLaMA        bool
+	DisableTransformer  bool
+	DisableTranslation  bool
+	DisableAds          bool
 	DisableSummaryCache bool
 	ForceFetchImage     bool
 
-	SummaryTTL   int
-	SummarySize  int
+	SummaryTTL    int
+	SummarySize   int
 	UpdatableDays int
 	LocalLLMScore int
+	LLMRate       int
 
 	OutputDir string
 	ImageDir  string
@@ -87,20 +88,20 @@ func Load() *Config {
 	}
 
 	cfg := &Config{
-		Debug:    os.Getenv("DEBUG") == "1",
-		Site:     site,
-		DBPath:   dbPath,
+		Debug:  os.Getenv("DEBUG") == "1",
+		Site:   site,
+		DBPath: dbPath,
 
-		OpenAIAPIKey:  keysStr,
-		OpenAIBase:    os.Getenv("OPENAI_API_BASE"),
-		OpenAIKeys:    keys,
-		OpenAIModel:   os.Getenv("OPENAI_MODEL"),
-		OpenAIScore:   intEnv("OPENAI_SCORE_THRESHOLD", 20),
+		OpenAIAPIKey: keysStr,
+		OpenAIBase:   os.Getenv("OPENAI_API_BASE"),
+		OpenAIKeys:   keys,
+		OpenAIModel:  os.Getenv("OPENAI_MODEL"),
+		OpenAIScore:  intEnv("OPENAI_SCORE_THRESHOLD", 20),
 
-		GeminiAPIKey:    os.Getenv("GEMINI_API_KEY"),
-		GeminiModel:     os.Getenv("GEMINI_MODEL"),
-		GeminiScore:     intEnv("GEMINI_SCORE_THRESHOLD", 20),
-		DisableGemini:   os.Getenv("DISABLE_GEMINI") == "1",
+		GeminiAPIKey:  os.Getenv("GEMINI_API_KEY"),
+		GeminiModel:   os.Getenv("GEMINI_MODEL"),
+		GeminiScore:   intEnv("GEMINI_SCORE_THRESHOLD", 20),
+		DisableGemini: os.Getenv("DISABLE_GEMINI") == "1",
 
 		OpenRouterAPIKey:  os.Getenv("OPENROUTER_API_KEY"),
 		OpenRouterModels:  parseModels(os.Getenv("OPENROUTER_MODELS")),
@@ -110,15 +111,16 @@ func Load() *Config {
 		DisableTransformer: os.Getenv("DISABLE_TRANSFORMER") == "1",
 		AdsenseID:          os.Getenv("ADSENSE_ID"),
 
-		DisableTranslation: os.Getenv("DISABLE_TRANSLATION") == "1",
-		DisableAds:         os.Getenv("DISABLE_ADS") == "1",
+		DisableTranslation:  os.Getenv("DISABLE_TRANSLATION") == "1",
+		DisableAds:          os.Getenv("DISABLE_ADS") == "1",
 		DisableSummaryCache: os.Getenv("DISABLE_SUMMARY_CACHE") == "1",
-		ForceFetchImage:    os.Getenv("FORCE_FETCH_FEATURE_IMAGE") == "1",
+		ForceFetchImage:     os.Getenv("FORCE_FETCH_FEATURE_IMAGE") == "1",
 
 		SummaryTTL:    intEnv("SUMMARY_TTL_DAYS", 60) * 86400,
 		SummarySize:   400,
 		UpdatableDays: intEnv("UPDATABLE_WITHIN_DAYS", 3),
 		LocalLLMScore: 10,
+		LLMRate:       intEnv("LLM_RATE_LIMIT", 30),
 
 		OutputDir: outputDir,
 		ImageDir:  filepath.Join(outputDir, "image"),

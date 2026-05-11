@@ -122,9 +122,10 @@ func fetchGeminiModelsFromAPI(apiKey string) ([]string, error) {
 }
 
 type GeminiClient struct {
-	apiKey string
-	models []string
-	client *http.Client
+	apiKey      string
+	models      []string
+	client      *http.Client
+	rateLimiter *RateLimiter
 }
 
 func NewGeminiClient(apiKey, model string) *GeminiClient {
@@ -155,6 +156,10 @@ func NewGeminiClient(apiKey, model string) *GeminiClient {
 		models: models,
 		client: &http.Client{Timeout: 60 * time.Second},
 	}
+}
+
+func (c *GeminiClient) SetRateLimit(rpm int) {
+	c.rateLimiter = NewRateLimiter(rpm)
 }
 
 type geminiRequest struct {
@@ -220,6 +225,10 @@ func cleanSummary(s string) string {
 }
 
 func (c *GeminiClient) call(req geminiRequest) (string, error) {
+	if c.rateLimiter != nil {
+		c.rateLimiter.Wait()
+	}
+
 	body, err := json.Marshal(req)
 	if err != nil {
 		return "", fmt.Errorf("marshal: %w", err)

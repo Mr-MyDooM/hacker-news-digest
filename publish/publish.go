@@ -88,14 +88,14 @@ func genPage(newsList []*hn.News, path string) {
 	pageURL = filepath.Dir(pageURL) + "/"
 
 	data := &template.PageData{
-		NewsList:     newsList,
-		LastUpdated:  time.Now().In(config.IST),
-		Lang:         "en",
-		DailyLinks:   dailyLinks,
-		Path:         pageURL,
-		Site:         cfg.Site,
-		AdsenseID:    cfg.AdsenseID,
-		DisableAds:   cfg.DisableAds,
+		NewsList:           newsList,
+		LastUpdated:        time.Now().In(config.IST),
+		Lang:               "en",
+		DailyLinks:         dailyLinks,
+		Path:               pageURL,
+		Site:               cfg.Site,
+		AdsenseID:          cfg.AdsenseID,
+		DisableAds:         cfg.DisableAds,
 		DisableTranslation: cfg.DisableTranslation,
 	}
 
@@ -196,5 +196,3 @@ Sitemap: ` + cfg.Site + "/sitemap.xml\n"
 	os.WriteFile(filepath.Join(cfg.OutputDir, "robots.txt"), []byte(robots), 0644)
 	log.Println("Generated robots.txt")
 }
-
-

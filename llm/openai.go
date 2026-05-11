@@ -13,11 +13,11 @@ import (
 )
 
 type OpenAIClient struct {
-	apiKey       string
-	baseURL      string
-	models       []string
-	client       *http.Client
-	requestDelay time.Duration
+	apiKey      string
+	baseURL     string
+	models      []string
+	client      *http.Client
+	rateLimiter *RateLimiter
 }
 
 func NewOpenAIClient(apiKey, baseURL string, models ...string) *OpenAIClient {
@@ -27,6 +27,10 @@ func NewOpenAIClient(apiKey, baseURL string, models ...string) *OpenAIClient {
 		models:  models,
 		client:  &http.Client{Timeout: 60 * time.Second},
 	}
+}
+
+func (c *OpenAIClient) SetRateLimit(rpm int) {
+	c.rateLimiter = NewRateLimiter(rpm)
 }
 
 type chatMessage struct {
@@ -94,13 +98,9 @@ func (c *OpenAIClient) callWithFallback(messages []chatMessage) (string, error) 
 	return "", fmt.Errorf("no models configured")
 }
 
-func (c *OpenAIClient) SetRateLimit(delay time.Duration) {
-	c.requestDelay = delay
-}
-
 func (c *OpenAIClient) call(req chatRequest) (string, error) {
-	if c.requestDelay > 0 {
-		time.Sleep(c.requestDelay)
+	if c.rateLimiter != nil {
+		c.rateLimiter.Wait()
 	}
 
 	body, err := json.Marshal(req)

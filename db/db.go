@@ -60,17 +60,17 @@ func createTables() error {
 type Model string
 
 const (
-	ModelPrefix     Model = "Prefix"
-	ModelFull       Model = "Full"
-	ModelEmbed      Model = "Embed"
+	ModelPrefix      Model = "Prefix"
+	ModelFull        Model = "Full"
+	ModelEmbed       Model = "Embed"
 	ModelTransformer Model = "GoogleT5"
-	ModelLLaMA      Model = "Llama"
-	ModelStep       Model = "Step"
-	ModelGemma      Model = "Gemma"
-	ModelQwen       Model = "Qwen"
-	ModelOpenAI     Model = "OpenAI"
-	ModelGemini     Model = "Gemini"
-	ModelOpenRouter Model = "OpenRouter"
+	ModelLLaMA       Model = "Llama"
+	ModelStep        Model = "Step"
+	ModelGemma       Model = "Gemma"
+	ModelQwen        Model = "Qwen"
+	ModelOpenAI      Model = "OpenAI"
+	ModelGemini      Model = "Gemini"
+	ModelOpenRouter  Model = "OpenRouter"
 )
 
 func (m Model) CanTruncate() bool {
