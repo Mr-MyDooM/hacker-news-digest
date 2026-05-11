@@ -394,9 +394,18 @@ body::before {
 
 /* Share icon */
 .post-meta .share-icon {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font: inherit;
     cursor: pointer;
     opacity: 0.7;
     transition: opacity 0.15s;
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    line-height: 1;
 }
 .post-meta .share-icon:hover { opacity: 1; color: var(--neon) !important; }
 
