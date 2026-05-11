@@ -163,16 +163,18 @@
         <div class="post-meta">
             <span class="label label-primary score">{{$news.Score}}</span>
             <span class="author-link">
+                <i class="fa fa-user"></i>
                 <a href="https://news.ycombinator.com/user?id={{$news.Author}}">{{$news.Author}}</a>
             </span>
-            <span class="summit-time" data-submitted="{{$news.SubmitTime.UTC.Format "2006-01-02T15:04:05Z"}}" title="{{$news.SubmitTime.Format "02 Jan 2006 15:04"}} IST">{{timeAgo $news.SubmitTime}}</span>
+            <span class="summit-time" data-submitted="{{$news.SubmitTime.UTC.Format "2006-01-02T15:04:05Z"}}" title="{{$news.SubmitTime.Format "02 Jan 2006 15:04"}} IST"><i class="fa fa-clock-o"></i> {{timeAgo $news.SubmitTime}}</span>
             <span class="host">
+                <i class="fa fa-globe"></i>
                 <img src="https://www.google.com/s2/favicons?domain={{domain $news.URL}}" width="16" height="16" alt="favicon"
                      onerror="favicon_fall_back(this);">
                 {{domain $news.URL}}
             </span>
             {{if $news.Summary}}<span class="label label-info summary-model">{{$news.SummarizedBy}}</span>{{end}}
-            <span class="reading-time" data-slug="{{$news.Slug}}"></span>
+            <i class="fa fa-hourglass-half"></i> <span class="reading-time" data-slug="{{$news.Slug}}"></span>
             <button class="share-icon" title="Share permalink" data-slug="{{$news.Slug}}" aria-label="Share permalink">
                 <i class="fa fa-share-alt"></i>
             </button>
