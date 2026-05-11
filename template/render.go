@@ -143,7 +143,7 @@ func RenderFeed(newsList []*hn.News, siteURL string) string {
 	var b strings.Builder
 	b.WriteString(`<?xml version="1.0" encoding="UTF-8"?>` + "\n")
 	b.WriteString(`<feed xmlns="http://www.w3.org/2005/Atom">` + "\n")
-	b.WriteString(fmt.Sprintf("  <title>Hacker News Summary</title>\n"))
+	b.WriteString(fmt.Sprintf("  <title>HN Summary</title>\n"))
 	b.WriteString(fmt.Sprintf("  <updated>%s</updated>\n", now.Format(time.RFC3339)))
 	b.WriteString(fmt.Sprintf("  <id>%s/</id>\n", siteURL))
 	b.WriteString(fmt.Sprintf("  <link href=\"%s/feed.xml\" rel=\"self\"/>\n", siteURL))

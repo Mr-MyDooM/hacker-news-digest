@@ -1,5 +1,5 @@
 {
-  "name": "Hacker News Summary",
+  "name": "HN Summary",
   "short_name": "HN Digest",
   "description": "AI-powered summaries of top Hacker News stories",
   "start_url": "/",

@@ -2,7 +2,6 @@ var CACHE = 'hn-digest-v1';
 var STATIC_URLS = [
   '/static/css/style.css',
   '/static/css/bootstrap.min.css',
-  '/static/css/font-awesome.min.css',
   '/static/js/hn.js',
   '/static/js/jquery.scrollUp.min.js',
   '/static/js/jquery.lazyload.min.js',
