@@ -173,7 +173,7 @@
                      onerror="favicon_fall_back(this);">
                 {{domain $news.URL}}
             </span>
-            {{if $news.Summary}}<span class="label label-info summary-model">{{if $news.SummarizedBy.IsPrefix}}<i class="fa fa-ellipsis-h"></i> {{end}}{{$news.SummarizedBy}}</span>{{end}}
+            {{if $news.Summary}}<span class="label label-info summary-model"><i class="fa fa-ellipsis-h"></i> {{$news.SummarizedBy}}</span>{{end}}
             <i class="fa fa-hourglass-half"></i> <span class="reading-time" data-slug="{{$news.Slug}}"></span>
             <button class="share-icon" title="Share permalink" data-slug="{{$news.Slug}}" aria-label="Share permalink">
                 <i class="fa fa-share-alt"></i>
