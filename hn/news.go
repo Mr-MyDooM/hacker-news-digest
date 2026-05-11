@@ -54,6 +54,31 @@ func (n *News) PullContent() {
 		return
 	}
 
+	// Optimization: Check cache FIRST to avoid expensive network I/O
+	cached, err := db.GetSummary(n.URL)
+	if err != nil {
+		log.Printf("Cache error for %s: %v", n.URL, err)
+	}
+	n.Cache = cached
+
+	if cached != nil && cached.Summary != "" {
+		// If cached model is final, or score doesn't warrant an LLM upgrade, return early
+		if cached.Model.IsFinal() || n.Score < cfg.LocalLLMScore {
+			n.Summary = cached.Summary
+			n.SummarizedBy = cached.Model
+			// Restore cached image if we don't already have one
+			if n.Image == nil && cached.ImageJSON.Valid && cached.ImageJSON.String != "" {
+				var img extractor.WebImage
+				if json.Unmarshal([]byte(cached.ImageJSON.String), &img) == nil && img.URL != "" {
+					n.Image = &img
+				}
+			}
+			log.Printf("Cache hit for %s (skipping fetch)", n.URL)
+			return
+		}
+		log.Printf("Cache hit for %s, but model %s needs LLM upgrade", n.URL, cached.Model)
+	}
+
 	result, err := extractor.Extract(n.URL, cfg.SummarySize*3)
 	if err != nil {
 		log.Printf("Failed to fetch %s: %v", n.URL, err)
@@ -143,11 +168,17 @@ func (n *News) Summarize(content string) {
 		return
 	}
 
-	cached, err := db.GetSummary(n.URL)
-	if err != nil {
-		log.Printf("Cache error for %s: %v", n.URL, err)
+	var err error
+
+	// n.Cache might have been populated in PullContent()
+	cached := n.Cache
+	if cached == nil {
+		cached, err = db.GetSummary(n.URL)
+		if err != nil {
+			log.Printf("Cache error for %s: %v", n.URL, err)
+		}
+		n.Cache = cached
 	}
-	n.Cache = cached
 
 	if cached != nil && cached.Summary != "" {
 		// If cached model is non-final (e.g. prefix from a rate-limited run)
