@@ -179,8 +179,9 @@ $.scrollUp({
 })();
 
 // Feature image modal
-$('.post-item .post-summary .feature-image img').click(function(e) {
-    PreviewImage($(this).attr('src'));
+$('.post-item .post-summary').on('click', '.feature-image', function(e) {
+    var src = $(this).find('img').attr('src');
+    if (src) PreviewImage(src);
     return false;
 });
 

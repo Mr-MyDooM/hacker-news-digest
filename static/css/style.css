@@ -466,6 +466,7 @@ body::before {
     display: block;
     border-radius: 0;
     border: none;
+    cursor: zoom-in;
 }
 
 .post-summary .summary-text {
