@@ -7,7 +7,9 @@ function getEffectiveTheme() {
 
 function setThemeIcon(theme) {
     var icon = document.querySelector('#theme-toggle i');
+    var btn = document.querySelector('#theme-toggle');
     if (icon) icon.className = theme === 'dark' ? 'fa fa-sun-o' : 'fa fa-moon-o';
+    if (btn) btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
 }
 
 // Sync icon on load
@@ -191,13 +193,19 @@ $('.post-item .share-icon').click(function(e) {
     if (!slug) return false;
     const url = window.location.origin + window.location.pathname + '#' + slug;
     const title = $(this).closest('.post-item').find('.post-title a').text().trim();
+    const btn = $(this);
     if (navigator.share) {
         navigator.share({title: title, url: url}).catch(function() {});
     } else if (navigator.clipboard) {
         navigator.clipboard.writeText(url).then(function() {
-            const icon = $('.share-icon[data-slug="' + slug + '"] i');
+            const icon = btn.find('i');
+            const originalLabel = btn.attr('aria-label');
             icon.removeClass('fa-share-alt').addClass('fa-check');
-            setTimeout(() => icon.removeClass('fa-check').addClass('fa-share-alt'), 1500);
+            btn.attr('aria-label', 'Permalink copied!');
+            setTimeout(() => {
+                icon.removeClass('fa-check').addClass('fa-share-alt');
+                btn.attr('aria-label', originalLabel);
+            }, 1500);
         });
     }
     return false;
@@ -288,6 +296,7 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
             if (!body) return;
             var expanded = body.classList.toggle('expanded');
             this.textContent = expanded ? 'Show less' : 'Show more';
+            this.setAttribute('aria-expanded', expanded);
         });
     });
 })();
@@ -310,6 +319,9 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
             el.classList.toggle('active-keyboard', i === idx);
         });
         items[idx].scrollIntoView({behavior: 'smooth', block: 'center'});
+        // Focus the link for screen readers to announce the selection
+        const link = items[idx].querySelector('.post-title a');
+        if (link) link.focus({preventScroll: true});
     }
 
     document.addEventListener('keydown', function(e) {
@@ -370,8 +382,9 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
 
     searchToggle.addEventListener('click', function(e) {
         e.preventDefault();
-        searchBox.classList.toggle('hidden');
-        if (!searchBox.classList.contains('hidden')) {
+        const hidden = searchBox.classList.toggle('hidden');
+        this.setAttribute('aria-expanded', !hidden);
+        if (!hidden) {
             searchInput.focus();
         } else {
             searchInput.value = '';
@@ -381,8 +394,10 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
 
     searchClose.addEventListener('click', function() {
         searchBox.classList.add('hidden');
+        searchToggle.setAttribute('aria-expanded', 'false');
         searchInput.value = '';
         doSearch('');
+        searchToggle.focus();
     });
 
     var searchTimer;
