@@ -24,6 +24,7 @@
     <meta name="theme-color" content="#f5f0eb" media="(prefers-color-scheme: light)">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/font-awesome.min.css" rel="stylesheet">
     <link href="/static/css/style.css" rel="stylesheet">
 
     <script>
@@ -123,12 +124,12 @@
                 </li>
                 <li>
                     <a href="#" id="search-toggle" title="Search" aria-label="Search">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <i class="fa fa-search"></i>
                     </a>
                 </li>
                 <li>
                     <button id="theme-toggle" title="Toggle theme" aria-label="Toggle theme">
-                        <svg id="theme-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                        <i class="fa fa-moon-o"></i>
                     </button>
                 </li>
             </ul>
@@ -162,10 +163,10 @@
         <div class="post-meta">
             <span class="label label-primary score">{{$news.Score}}</span>
             <span class="author-link">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <i class="fa fa-user"></i>
                 <a href="https://news.ycombinator.com/user?id={{$news.Author}}">{{$news.Author}}</a>
             </span>
-            <span class="summit-time" data-submitted="{{$news.SubmitTime.UTC.Format "2006-01-02T15:04:05Z"}}" title="{{$news.SubmitTime.Format "02 Jan 2006 15:04"}} IST"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> {{timeAgo $news.SubmitTime}}</span>
+            <span class="summit-time" data-submitted="{{$news.SubmitTime.UTC.Format "2006-01-02T15:04:05Z"}}" title="{{$news.SubmitTime.Format "02 Jan 2006 15:04"}} IST"><i class="fa fa-clock-o"></i> {{timeAgo $news.SubmitTime}}</span>
             <span class="host">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                 <img src="https://www.google.com/s2/favicons?domain={{domain $news.URL}}" width="16" height="16" alt="favicon"
@@ -173,14 +174,14 @@
                 {{domain $news.URL}}
             </span>
             {{if $news.Summary}}<span class="label label-info summary-model">{{$news.SummarizedBy}}</span>{{end}}
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> <span class="reading-time" data-slug="{{$news.Slug}}"></span>
+            <i class="fa fa-hourglass-half"></i> <span class="reading-time" data-slug="{{$news.Slug}}"></span>
             <button class="share-icon" title="Share permalink" data-slug="{{$news.Slug}}" aria-label="Share permalink">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                <i class="fa fa-share-alt"></i>
             </button>
             {{if $news.CommentURL}}
             <span class="comment">
                 <a href="{{$news.CommentURL}}" target="_blank" rel="noopener noreferrer">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> {{$news.CommentCount}}
+                    <i class="fa fa-comment"></i> {{$news.CommentCount}}
                 </a>
             </span>
             {{end}}
@@ -210,7 +211,7 @@
     <footer class="site-footer">
         <div class="row">
             <div class="col-sm-4">
-                <a href="/feed.xml"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg> RSS Feed</a>
+                <a href="/feed.xml"><i class="fa fa-rss"></i> RSS Feed</a>
             </div>
             <div class="col-sm-4 text-center keyboard-hints">
                 <span title="Navigate stories"><kbd>j</kbd> <kbd>k</kbd></span>
