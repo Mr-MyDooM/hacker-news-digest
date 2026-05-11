@@ -218,7 +218,7 @@
                 <span title="Search"><kbd>/</kbd></span>
             </div>
             <div class="col-sm-4 text-right">
-                Last updated: <span title="{{.LastUpdated.Format "2006-01-02 15:04:05 IST"}}">{{timeAgo .LastUpdated}}</span>
+                Last updated: <span class="last-updated" data-updated="{{.LastUpdated.UTC.Format "2006-01-02T15:04:05Z"}}" title="{{.LastUpdated.Format "2006-01-02 15:04:05 IST"}}">{{timeAgo .LastUpdated}}</span>
             </div>
         </div>
     </footer>

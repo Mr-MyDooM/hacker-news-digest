@@ -218,6 +218,15 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
             el.textContent = rel;
         }
     });
+    var lu = document.querySelector('.last-updated[data-updated]');
+    if (lu) {
+        function refreshLastUpdated() {
+            var rel = timeAgo(lu.getAttribute('data-updated'));
+            if (rel) lu.textContent = rel;
+        }
+        refreshLastUpdated();
+        setInterval(refreshLastUpdated, 60000);
+    }
 })();
 
 // =============================================
