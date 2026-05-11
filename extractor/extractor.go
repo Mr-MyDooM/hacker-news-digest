@@ -73,6 +73,11 @@ func Extract(url string, maxLength int) (*ExtractResult, error) {
 	result.SiteName = extractMeta(doc, "og:site_name")
 	result.Content = extractContent(doc, maxLength)
 
+	// Fallback: no og:image found, look for first suitable <img> in article body
+	if result.Image == "" {
+		result.Image = extractBodyImage(doc, url)
+	}
+
 	// When body content is empty (paywalled, login wall, etc.), try Jina reader as proxy.
 	if result.Content == "" && result.Description == "" {
 		if jinaResult, err := ExtractViaJina(url, maxLength); err == nil {
@@ -125,6 +130,90 @@ func extractMetaImage(doc *goquery.Document, pageURL string) string {
 		}
 	}
 	return ""
+}
+
+func extractBodyImage(doc *goquery.Document, pageURL string) string {
+	skipKeywords := []string{"avatar", "spinner", "icon", "logo", "button", "banner", "thumb", "sprite", "loading", "placeholder", "pixel"}
+	candidate := ""
+
+	// Search image containers first (article, main)
+	containers := doc.Find("article, main, [role=main], .post-content, .entry-content, .article-body")
+	if containers.Length() > 0 {
+		containers.Find("img").Each(func(i int, sel *goquery.Selection) {
+			if candidate != "" {
+				return
+			}
+			src, exists := sel.Attr("src")
+			if !exists || src == "" || strings.HasPrefix(src, "data:") {
+				return
+			}
+			cls, _ := sel.Attr("class")
+			id, _ := sel.Attr("id")
+			alt, _ := sel.Attr("alt")
+			attrStr := cls + " " + id + " " + alt
+			lower := strings.ToLower(attrStr)
+			for _, kw := range skipKeywords {
+				if strings.Contains(lower, kw) {
+					return
+				}
+			}
+			candidate = resolveURL(pageURL, src)
+		})
+	}
+
+	// Fallback: search full document for first suitable img
+	if candidate == "" {
+		doc.Find("img").Each(func(i int, sel *goquery.Selection) {
+			if candidate != "" {
+				return
+			}
+			src, exists := sel.Attr("src")
+			if !exists || src == "" || strings.HasPrefix(src, "data:") {
+				return
+			}
+			w, wex := sel.Attr("width")
+			h, hex := sel.Attr("height")
+			if wex && hex {
+				if isDimSmall(w, h) {
+					return
+				}
+			}
+			cls, _ := sel.Attr("class")
+			id, _ := sel.Attr("id")
+			alt, _ := sel.Attr("alt")
+			attrStr := cls + " " + id + " " + alt
+			lower := strings.ToLower(attrStr)
+			for _, kw := range skipKeywords {
+				if strings.Contains(lower, kw) {
+					return
+				}
+			}
+			candidate = resolveURL(pageURL, src)
+		})
+	}
+
+	return candidate
+}
+
+func isDimSmall(w, h string) bool {
+	wid, errW := parseInt(w)
+	hei, errH := parseInt(h)
+	if errW == nil && errH == nil && (wid < 80 || hei < 80) {
+		return true
+	}
+	return false
+}
+
+func parseInt(s string) (int, error) {
+	s = strings.TrimRight(s, "px")
+	var n int
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return 0, fmt.Errorf("not a number")
+		}
+		n = n*10 + int(c-'0')
+	}
+	return n, nil
 }
 
 func extractFavicon(doc *goquery.Document, pageURL string) string {
