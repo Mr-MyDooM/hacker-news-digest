@@ -69,7 +69,7 @@ func Extract(url string, maxLength int) (*ExtractResult, error) {
 	result.Title = extractTitle(doc)
 	result.Description = extractMeta(doc, "description")
 	result.Favicon = extractFavicon(doc, url)
-	result.Image = extractMetaImage(doc)
+	result.Image = extractMetaImage(doc, url)
 	result.SiteName = extractMeta(doc, "og:site_name")
 	result.Content = extractContent(doc, maxLength)
 
@@ -108,7 +108,7 @@ func extractMeta(doc *goquery.Document, name string) string {
 	return ""
 }
 
-func extractMetaImage(doc *goquery.Document) string {
+func extractMetaImage(doc *goquery.Document, pageURL string) string {
 	selectors := []string{
 		`meta[property="og:image"]`,
 		`meta[name="twitter:image"]`,
@@ -117,7 +117,11 @@ func extractMetaImage(doc *goquery.Document) string {
 	for _, sel := range selectors {
 		content, exists := doc.Find(sel).Attr("content")
 		if exists && content != "" {
-			return strings.TrimSpace(content)
+			content = strings.TrimSpace(content)
+			if strings.HasPrefix(content, "http://") || strings.HasPrefix(content, "https://") {
+				return content
+			}
+			return resolveURL(pageURL, content)
 		}
 	}
 	return ""
