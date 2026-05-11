@@ -37,7 +37,8 @@ func GetDailyNews(updatableDays int) (map[string][]*News, error) {
 		if err != nil {
 			return nil, fmt.Errorf("algolia page %d: %w", page, err)
 		}
-		body, _ := io.ReadAll(resp.Body)
+		// Security: limit Algolia API response to 2MB
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2*1024*1024))
 		resp.Body.Close()
 
 		var ar algoliaResponse

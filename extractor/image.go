@@ -42,7 +42,8 @@ func FetchImage(srcURL, referrer, imageDir string) (*WebImage, error) {
 		return nil, fmt.Errorf("fetch image: status %d", resp.StatusCode)
 	}
 
-	data, err := io.ReadAll(resp.Body)
+	// Security: limit image download to 5MB
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 5*1024*1024))
 	if err != nil {
 		return nil, err
 	}

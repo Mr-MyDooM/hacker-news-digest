@@ -39,7 +39,8 @@ func Extract(url string, maxLength int) (*ExtractResult, error) {
 	// but leave og:description in the initial HTML response.
 	softFail := resp.StatusCode != http.StatusOK
 
-	body, err := io.ReadAll(resp.Body)
+	// Security: limit response body to 10MB to prevent resource exhaustion
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
 	if err != nil {
 		return nil, fmt.Errorf("read body: %w", err)
 	}
@@ -298,7 +299,8 @@ func ExtractViaJina(url string, maxLength int) (*ExtractResult, error) {
 		return nil, fmt.Errorf("jina status %d", resp.StatusCode)
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	// Security: limit jina response to 5MB
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 5*1024*1024))
 	if err != nil {
 		return nil, fmt.Errorf("jina read: %w", err)
 	}
