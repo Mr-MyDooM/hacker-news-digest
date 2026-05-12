@@ -52,7 +52,7 @@ function updateUrlHash(newParams) {
 }
 
 // Read sort values from data-* attrs on article element (avoids brittle DOM text parsing)
-const comparators = {
+var comparators = Object.assign(Object.create(null), {
     'rank': (a, b) => parseInt($(a).data('rank')) - parseInt($(b).data('rank')),
     'score': (a, b) => {
         const diff = parseInt($(b).data('points')) - parseInt($(a).data('points'));
@@ -66,7 +66,7 @@ const comparators = {
         const diff = parseInt($(b).data('time')) - parseInt($(a).data('time'));
         return diff !== 0 ? diff : parseInt($(a).data('rank')) - parseInt($(b).data('rank'));
     }
-};
+});
 
 function applyAndRenderSort(sortBy, sortOrder) {
     const comparator = comparators[sortBy];
