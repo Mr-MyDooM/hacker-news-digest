@@ -123,9 +123,9 @@
                     </ul>
                 </li>
                 <li>
-                    <a href="#" id="search-toggle" title="Search" aria-label="Search">
+                    <button id="search-toggle" title="Search" aria-label="Search" aria-expanded="false" aria-controls="search-box">
                         <i class="fa fa-search"></i>
-                    </a>
+                    </button>
                 </li>
                 <li>
                     <button id="theme-toggle" title="Toggle theme" aria-label="Toggle theme">
@@ -189,18 +189,18 @@
         {{if or $news.Summary $news.Image}}
         <div class="post-summary">
             {{if $news.Image}}
-            <div class="feature-image">
+            <button class="feature-image" aria-label="Zoom feature image">
                 <img src="{{$news.Image.URL}}" alt="feature image" loading="lazy">
-            </div>
+            </button>
             {{end}}
             {{if $news.Summary}}
-            <div class="summary-body" data-slug="{{$news.Slug}}">
+            <div class="summary-body" data-slug="{{$news.Slug}}" id="summary-{{$news.Slug}}">
                 {{if $news.SummarizedBy.NeedEscape}}
                 <pre class="summary-text">{{$news.Summary}}</pre>
                 {{else}}
                 <p class="summary-text">{{$news.Summary}}</p>
                 {{end}}
-                <button class="summary-toggle" data-slug="{{$news.Slug}}" style="display:none">Show more</button>
+                <button class="summary-toggle" data-slug="{{$news.Slug}}" aria-expanded="false" aria-controls="summary-{{$news.Slug}}" style="display:none">Show more</button>
             </div>
             {{end}}
         </div>

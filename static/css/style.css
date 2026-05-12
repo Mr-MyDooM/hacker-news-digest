@@ -162,18 +162,24 @@ body::before {
 .navbar-collapse { border-color: var(--divider) !important; }
 
 .nav > li > a,
-.nav > li > button {
+.nav > li > button,
+#search-toggle {
     color: var(--text-dim) !important;
     font-size: 0.85rem;
     font-weight: 500;
     padding: 14px 10px;
     transition: color 0.2s;
+    background: none;
+    border: none;
+    display: block;
 }
 
 .nav > li > a:hover,
 .nav > li > a:focus,
 .nav > li > button:hover,
-.nav > li > button:focus {
+.nav > li > button:focus,
+#search-toggle:hover,
+#search-toggle:focus {
     color: var(--neon) !important;
     background: transparent !important;
 }
@@ -457,6 +463,14 @@ body::before {
     overflow: hidden;
     border-radius: 6px;
     border: 1px solid var(--divider);
+    padding: 0;
+    background: none;
+    display: block;
+}
+
+.post-summary .feature-image:focus-visible {
+    outline: 2px solid var(--neon);
+    outline-offset: 2px;
 }
 
 .post-summary .feature-image img {
@@ -653,9 +667,13 @@ body::before {
     cursor: default;
 }
 
-/* Focus indicator for keyboard users */
 .post-item:focus-within {
     outline: none;
+    background: var(--neon-dim);
+    margin: 0 -0.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    border-radius: 6px;
 }
 .post-item:focus-within .post-title a {
     outline: 2px solid var(--neon-glow);
@@ -791,7 +809,10 @@ body::before {
 
 /* Native focus ring for old browsers, custom neon for modern ones */
 .share-icon:focus-visible,
-#theme-toggle:focus-visible {
+#theme-toggle:focus-visible,
+#search-toggle:focus-visible,
+.navbar-toggle:focus-visible,
+.summary-toggle:focus-visible {
     outline: 2px solid var(--neon);
     outline-offset: 2px;
     border-radius: 2px;
