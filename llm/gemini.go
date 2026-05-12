@@ -172,7 +172,7 @@ type geminiContent struct {
 }
 
 type geminiRequest struct {
-	Contents         []geminiContent `json:"contents"`
+	Contents          []geminiContent `json:"contents"`
 	SystemInstruction *geminiContent  `json:"system_instruction,omitempty"`
 }
 
