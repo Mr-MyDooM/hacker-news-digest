@@ -182,7 +182,6 @@ body::before {
 #search-toggle:focus {
     color: var(--neon) !important;
     background: transparent !important;
-    outline: none;
 }
 
 .nav .open > a,
@@ -668,9 +667,13 @@ body::before {
     cursor: default;
 }
 
-/* Focus indicator for keyboard users */
 .post-item:focus-within {
     outline: none;
+    background: var(--neon-dim);
+    margin: 0 -0.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    border-radius: 6px;
 }
 .post-item:focus-within .post-title a {
     outline: 2px solid var(--neon-glow);
@@ -813,13 +816,4 @@ body::before {
     outline: 2px solid var(--neon);
     outline-offset: 2px;
     border-radius: 2px;
-}
-
-.post-item:focus-within {
-    background: var(--neon-dim);
-    margin-left: -0.5rem;
-    margin-right: -0.5rem;
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
-    border-radius: 6px;
 }

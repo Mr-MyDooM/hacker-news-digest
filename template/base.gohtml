@@ -194,11 +194,11 @@
             </button>
             {{end}}
             {{if $news.Summary}}
-            <div class="summary-body" data-slug="{{$news.Slug}}">
+            <div class="summary-body" data-slug="{{$news.Slug}}" id="summary-{{$news.Slug}}">
                 {{if $news.SummarizedBy.NeedEscape}}
-                <pre class="summary-text" id="summary-{{$news.Slug}}">{{$news.Summary}}</pre>
+                <pre class="summary-text">{{$news.Summary}}</pre>
                 {{else}}
-                <p class="summary-text" id="summary-{{$news.Slug}}">{{$news.Summary}}</p>
+                <p class="summary-text">{{$news.Summary}}</p>
                 {{end}}
                 <button class="summary-toggle" data-slug="{{$news.Slug}}" aria-expanded="false" aria-controls="summary-{{$news.Slug}}" style="display:none">Show more</button>
             </div>
