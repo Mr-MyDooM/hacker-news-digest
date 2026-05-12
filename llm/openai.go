@@ -121,7 +121,8 @@ func (c *OpenAIClient) call(req chatRequest) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
+	// Security: limit response to 2MB
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 2*1024*1024))
 	if err != nil {
 		return "", fmt.Errorf("read response: %w", err)
 	}
