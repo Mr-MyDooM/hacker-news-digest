@@ -81,7 +81,8 @@ func fetchGeminiModelsFromAPI(apiKey string) ([]string, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	// Security: limit response to 1MB
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1*1024*1024))
 	if err != nil {
 		return nil, fmt.Errorf("read response: %w", err)
 	}
@@ -162,16 +163,17 @@ func (c *GeminiClient) SetRateLimit(rpm int) {
 	c.rateLimiter = NewRateLimiter(rpm)
 }
 
-type geminiRequest struct {
-	Contents []geminiContent `json:"contents"`
+type geminiPart struct {
+	Text string `json:"text"`
 }
 
 type geminiContent struct {
 	Parts []geminiPart `json:"parts"`
 }
 
-type geminiPart struct {
-	Text string `json:"text"`
+type geminiRequest struct {
+	Contents         []geminiContent `json:"contents"`
+	SystemInstruction *geminiContent  `json:"system_instruction,omitempty"`
 }
 
 type geminiResponse struct {
@@ -186,14 +188,15 @@ type geminiResponse struct {
 	} `json:"error,omitempty"`
 }
 
-const summarizeSystemPrompt = "Summarize the input in 2 concise English sentences. Do not exceed 200 characters. Do not start with 'This article', 'The article', 'This post', or 'The post'. Write in plain text, no Markdown."
+const summarizeSystemPrompt = "Summarize the input in 2 concise English sentences. Do not exceed 200 characters. Do not start with 'This article', 'The article', 'This post', or 'The post'. Write in plain text, no Markdown. Respond with ONLY the two sentences. Do not include any reasoning, chain-of-thought, draft attempts, character counts, or constraint checks."
 
 func (c *GeminiClient) Summarize(content string) (string, db.Model, error) {
-	prompt := fmt.Sprintf("%s\n\n%s", summarizeSystemPrompt, truncateContent(content, 15000))
-
 	req := geminiRequest{
+		SystemInstruction: &geminiContent{
+			Parts: []geminiPart{{Text: summarizeSystemPrompt}},
+		},
 		Contents: []geminiContent{
-			{Parts: []geminiPart{{Text: prompt}}},
+			{Parts: []geminiPart{{Text: truncateContent(content, 15000)}}},
 		},
 	}
 
@@ -205,10 +208,18 @@ func (c *GeminiClient) Summarize(content string) (string, db.Model, error) {
 	return cleanSummary(result), db.ModelGemini, nil
 }
 
-// cleanSummary strips markdown artifacts and model preambles (from polyrabbit pattern)
+// cleanSummary strips markdown, model preambles, and chain-of-thought reasoning.
 func cleanSummary(s string) string {
-	s = strings.ReplaceAll(s, "**", " ")
-	lower := strings.ToLower(strings.TrimSpace(s))
+	s = strings.ReplaceAll(s, "**", "")
+
+	// Strip chain-of-thought: if the response contains draft/attempt markers,
+	// extract only the final 1-2 sentence summary from the end.
+	if hasReasoningMarkers(s) {
+		s = extractFinalSummary(s)
+	}
+
+	s = strings.TrimSpace(s)
+	lower := strings.ToLower(s)
 	for _, p := range []string{"summary:", "here is a summary:", "here's a summary:"} {
 		if strings.HasPrefix(lower, p) {
 			s = s[len(p):]
@@ -221,6 +232,73 @@ func cleanSummary(s string) string {
 	s = strings.TrimLeftFunc(s, func(r rune) bool {
 		return r != ' ' && (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9')
 	})
+	return strings.TrimSpace(s)
+}
+
+// hasReasoningMarkers checks for Gemini chain-of-thought patterns.
+func hasReasoningMarkers(s string) bool {
+	markers := []string{
+		"*Draft", "*Attempt",
+		"Character count", "Sentence count",
+		"Start check", "Formatting check",
+		"Constraint", "forbidden start",
+	}
+	for _, m := range markers {
+		if strings.Contains(s, m) {
+			return true
+		}
+	}
+	return false
+}
+
+// extractFinalSummary finds the last short paragraph that looks like a summary
+// by stripping bullet-point reasoning and taking the final text.
+func extractFinalSummary(s string) string {
+	// Try final-text markers first
+	finalMarkers := []string{
+		"Final text:", "Final string:", "Final choice:",
+		"Let's go with:", "Final Polish:", "Final draft:",
+	}
+	lastIdx := -1
+	for _, m := range finalMarkers {
+		if idx := strings.LastIndex(s, m); idx > lastIdx {
+			lastIdx = idx + len(m)
+		}
+	}
+	if lastIdx > 0 {
+		s = s[lastIdx:]
+	}
+
+	// Remove remaining reasoning lines (bullet points, checks, meta-commentary)
+	lines := strings.Split(s, "\n")
+	var clean []string
+	for _, line := range lines {
+		t := strings.TrimSpace(line)
+		if t == "" {
+			continue
+		}
+		if strings.HasPrefix(t, "*") || strings.HasPrefix(t, "-") || strings.HasPrefix(t, "•") {
+			continue
+		}
+		skipPrefixes := []string{"wait,", "let's", "character", "sentence", "start", "formatting",
+			"plain text", "markdown", "concise", "constraint", "draft", "attempt"}
+		skip := false
+		lt := strings.ToLower(t)
+		for _, sp := range skipPrefixes {
+			if strings.HasPrefix(lt, sp) {
+				skip = true
+				break
+			}
+		}
+		if skip {
+			continue
+		}
+		clean = append(clean, t)
+	}
+
+	if len(clean) > 0 {
+		return strings.Join(clean, " ")
+	}
 	return strings.TrimSpace(s)
 }
 
@@ -252,7 +330,12 @@ func (c *GeminiClient) call(req geminiRequest) (string, error) {
 		}
 		defer resp.Body.Close()
 
-		respBody, _ := io.ReadAll(resp.Body)
+		// Security: limit response to 2MB
+		respBody, err := io.ReadAll(io.LimitReader(resp.Body, 2*1024*1024))
+		if err != nil {
+			lastErr = err
+			continue
+		}
 
 		var gr geminiResponse
 		if err := json.Unmarshal(respBody, &gr); err != nil {
