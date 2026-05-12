@@ -63,7 +63,7 @@ func (n *News) PullContent() {
 
 	if cached != nil && cached.Summary != "" {
 		// If cached model is final, or score doesn't warrant an LLM upgrade, return early
-		if cached.Model.IsFinal() || n.Score < cfg.LocalLLMScore {
+		if cached.Model.IsFinal() || n.Score < cfg.OpenRouterScore {
 			n.Summary = cached.Summary
 			n.SummarizedBy = cached.Model
 			// Restore cached image if we don't already have one
@@ -183,7 +183,7 @@ func (n *News) Summarize(content string) {
 	if cached != nil && cached.Summary != "" {
 		// If cached model is non-final (e.g. prefix from a rate-limited run)
 		// and score warrants LLM summarization, retry.
-		if !cached.Model.IsFinal() && n.Score >= cfg.LocalLLMScore {
+		if !cached.Model.IsFinal() && n.Score >= cfg.OpenRouterScore {
 			log.Printf("Cache hit for %s, model %s (non-final, will retry LLM)", n.URL, cached.Model)
 		} else {
 			n.Summary = cached.Summary
@@ -216,6 +216,14 @@ func (n *News) Summarize(content string) {
 	var model db.Model
 
 	switch {
+	case n.Score >= cfg.OpenRouterScore && openRouterClient != nil:
+		summary, model, err = openRouterClient.Summarize(content)
+		if err == nil {
+			break
+		}
+		log.Printf("OpenRouter failed for %s: %v", n.URL, err)
+		fallthrough
+
 	case n.Score >= cfg.OpenAIScore && openAIClient != nil:
 		summary, model, err = openAIClient.Summarize(content)
 		if err == nil {
@@ -230,14 +238,6 @@ func (n *News) Summarize(content string) {
 			break
 		}
 		log.Printf("Gemini failed for %s: %v", n.URL, err)
-		fallthrough
-
-	case n.Score >= cfg.LocalLLMScore && openRouterClient != nil:
-		summary, model, err = openRouterClient.Summarize(content)
-		if err == nil {
-			break
-		}
-		log.Printf("OpenRouter failed for %s: %v", n.URL, err)
 		fallthrough
 
 	default:

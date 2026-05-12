@@ -28,6 +28,7 @@ type Config struct {
 
 	OpenRouterAPIKey  string
 	OpenRouterModels  []string
+	OpenRouterScore   int
 	DisableOpenRouter bool
 
 	AdsenseID string
@@ -105,6 +106,7 @@ func Load() *Config {
 
 		OpenRouterAPIKey:  os.Getenv("OPENROUTER_API_KEY"),
 		OpenRouterModels:  parseModels(os.Getenv("OPENROUTER_MODELS")),
+		OpenRouterScore:   intEnv("OPENROUTER_SCORE_THRESHOLD", 1),
 		DisableOpenRouter: os.Getenv("DISABLE_OPENROUTER") == "1",
 
 		DisableLLaMA:       os.Getenv("DISABLE_LLAMA") == "1",
