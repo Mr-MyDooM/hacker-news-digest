@@ -3,14 +3,52 @@ package extractor
 import (
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
+	"syscall"
 	"time"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/PuerkitoBio/goquery"
 )
+
+// SafeHTTPClient returns an http.Client that blocks access to private/local networks.
+func SafeHTTPClient(timeout time.Duration) *http.Client {
+	dialer := &net.Dialer{
+		Timeout:   timeout,
+		KeepAlive: 30 * time.Second,
+		Control: func(network, address string, c syscall.RawConn) error {
+			host, _, err := net.SplitHostPort(address)
+			if err != nil {
+				return err
+			}
+			ip := net.ParseIP(host)
+			if ip != nil && !isSafeIP(ip) {
+				return fmt.Errorf("connection to %s is blocked", host)
+			}
+			return nil
+		},
+	}
+
+	return &http.Client{
+		Timeout: timeout,
+		Transport: &http.Transport{
+			Proxy:                 http.ProxyFromEnvironment,
+			DialContext:           dialer.DialContext,
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+	}
+}
+
+func isSafeIP(ip net.IP) bool {
+	return !(ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsPrivate() || ip.IsUnspecified())
+}
 
 type ExtractResult struct {
 	Title       string
@@ -22,7 +60,7 @@ type ExtractResult struct {
 }
 
 func Extract(url string, maxLength int) (*ExtractResult, error) {
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := SafeHTTPClient(30 * time.Second)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
@@ -375,7 +413,7 @@ func countWords(s string) int {
 // that block direct scraping (paywalls, login walls, 403s).
 func ExtractViaJina(url string, maxLength int) (*ExtractResult, error) {
 	jinaURL := "https://r.jina.ai/" + url
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := SafeHTTPClient(30 * time.Second)
 	req, err := http.NewRequest("GET", jinaURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("jina request: %w", err)
