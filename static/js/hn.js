@@ -237,7 +237,7 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
     function plural(n, word) {
         return n + ' ' + (n === 1 ? word : word + 's');
     }
-    document.querySelectorAll('.summit-time[data-submitted]').forEach(function(el) {
+    document.querySelectorAll('.submit-time[data-submitted]').forEach(function(el) {
         var rel = timeAgo(el.getAttribute('data-submitted'));
         if (rel) {
             el.textContent = rel;
@@ -378,6 +378,7 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
     var searchBox = document.getElementById('search-box');
     var searchInput = document.getElementById('search-input');
     var searchClose = document.getElementById('search-close');
+    var searchClearBtn = document.getElementById('search-clear-btn');
     if (!searchToggle || !searchBox || !searchInput) return;
 
     searchToggle.addEventListener('click', function(e) {
@@ -408,15 +409,26 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
         }, 150);
     });
 
+    if (searchClearBtn) {
+        searchClearBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            doSearch('');
+            searchInput.focus();
+        });
+    }
+
     function doSearch(query) {
         var articles = document.querySelectorAll('.post-item:not(.ad)');
+        var noResults = document.getElementById('search-no-results');
         if (!query) {
             articles.forEach(function(a) {
                 a.classList.remove('search-hidden', 'search-match');
             });
+            if (noResults) noResults.classList.add('hidden');
             return;
         }
         var lower = query.toLowerCase();
+        var matchCount = 0;
         articles.forEach(function(a) {
             var title = a.querySelector('.post-title a');
             var summary = a.querySelector('.summary-text');
@@ -430,6 +442,8 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
                         authorText.indexOf(lower) !== -1 || domainText.indexOf(lower) !== -1;
             a.classList.toggle('search-hidden', !match);
             a.classList.toggle('search-match', match);
+            if (match) matchCount++;
         });
+        if (noResults) noResults.classList.toggle('hidden', matchCount > 0);
     }
 })();
