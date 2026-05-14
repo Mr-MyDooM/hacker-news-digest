@@ -63,7 +63,11 @@ func (n *News) PullContent() {
 
 	if cached != nil && cached.Summary != "" {
 		// If cached model is final, or score doesn't warrant an LLM upgrade, return early
+<<<<<<< HEAD
 		if cached.Model.IsFinal() || n.Score < cfg.OpenRouterScore {
+=======
+		if cached.Model.IsFinal() || n.Score < cfg.OpenRouterScore {
+>>>>>>> bolt-cache-first-content-fetch-17637011524746374949
 			n.Summary = cached.Summary
 			n.SummarizedBy = cached.Model
 			// Restore cached image if we don't already have one
