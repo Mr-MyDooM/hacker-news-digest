@@ -120,7 +120,7 @@ func Load() *Config {
 
 		SummaryTTL:    intEnv("SUMMARY_TTL_DAYS", 60) * 86400,
 		SummarySize:   400,
-		UpdatableDays: intEnv("UPDATABLE_WITHIN_DAYS", 3),
+		UpdatableDays: intEnv("UPDATABLE_WITHIN_DAYS", 15),
 		LocalLLMScore: 10,
 		LLMRate:       intEnv("LLM_RATE_LIMIT", 30),
 
