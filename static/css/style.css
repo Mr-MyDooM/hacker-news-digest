@@ -605,6 +605,7 @@ body::before {
     align-items: center;
     gap: 6px;
 }
+.hidden { display: none !important; }
 #search-box.hidden { display: none; }
 #search-input {
     background: var(--dark-bg);
@@ -640,6 +641,39 @@ body::before {
 #search-toggle i { font-size: 0.85rem; }
 .post-item.search-hidden { display: none; }
 .post-item.search-match { border-left: 2px solid var(--neon); padding-left: 1rem; }
+
+.search-no-results {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-dim);
+    border: 1px dashed var(--divider);
+    border-radius: 8px;
+    margin: 2rem 0;
+}
+
+.search-no-results i {
+    color: var(--neon);
+    margin-bottom: 1rem;
+    opacity: 0.6;
+}
+
+.search-no-results p {
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+}
+
+#search-clear-btn {
+    background: var(--neon-dim);
+    border: 1px solid var(--tag-border);
+    color: var(--neon);
+    font-family: 'JetBrains Mono', monospace;
+    transition: all 0.2s;
+}
+
+#search-clear-btn:hover {
+    background: var(--neon);
+    color: var(--dark-bg);
+}
 
 @media (max-width: 768px) {
     #search-box { padding: 8px 10px; }

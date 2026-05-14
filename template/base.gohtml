@@ -140,6 +140,12 @@
         </div>
     </nav>
 
+    <div id="no-results" class="hidden search-no-results" role="status" aria-live="polite">
+        <i class="fa fa-search fa-2x"></i>
+        <p>No stories match your search.</p>
+        <button id="search-clear-btn" class="btn btn-sm" aria-label="Clear search">Clear search</button>
+    </div>
+
     {{range $i, $news := .NewsList}}
     {{if and (not $.DisableAds) $.AdsenseID (gt $i 0) (eq (mod $i 4) 0)}}
     <div class="post-item ad-unit">

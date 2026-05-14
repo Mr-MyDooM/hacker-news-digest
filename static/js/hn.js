@@ -410,13 +410,16 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
 
     function doSearch(query) {
         var articles = document.querySelectorAll('.post-item:not(.ad)');
+        var noResults = document.getElementById('no-results');
         if (!query) {
             articles.forEach(function(a) {
                 a.classList.remove('search-hidden', 'search-match');
             });
+            if (noResults) noResults.classList.add('hidden');
             return;
         }
         var lower = query.toLowerCase();
+        var matchCount = 0;
         articles.forEach(function(a) {
             var title = a.querySelector('.post-title a');
             var summary = a.querySelector('.summary-text');
@@ -430,6 +433,22 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
                         authorText.indexOf(lower) !== -1 || domainText.indexOf(lower) !== -1;
             a.classList.toggle('search-hidden', !match);
             a.classList.toggle('search-match', match);
+            if (match) matchCount++;
+        });
+
+        if (noResults) {
+            noResults.classList.toggle('hidden', matchCount > 0);
+        }
+    }
+
+    var searchClearBtn = document.getElementById('search-clear-btn');
+    if (searchClearBtn) {
+        searchClearBtn.addEventListener('click', function() {
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.focus();
+                doSearch('');
+            }
         });
     }
 })();
