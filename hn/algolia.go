@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -30,9 +32,12 @@ func GetDailyNews(updatableDays int) (map[string][]*News, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
 	seen := make(map[string]bool)
 	byDate := make(map[string][]*News)
+	threshold := time.Now().Add(-time.Duration(updatableDays)*24*time.Hour).Unix()
 
 	for page := 0; page < 50; page++ {
-		u := fmt.Sprintf("%s?tags=front_page&hitsPerPage=200&page=%d", algoliaURL, page)
+		// Performance: Use server-side filtering and limit pages to reduce API overhead.
+		u := fmt.Sprintf("%s?tags=front_page&hitsPerPage=200&page=%d&numericFilters=created_at_i%s%d", algoliaURL, page, url.QueryEscape(">"), threshold)
+		log.Printf("Fetching Algolia page %d: %s", page, u)
 		resp, err := client.Get(u)
 		if err != nil {
 			return nil, fmt.Errorf("algolia page %d: %w", page, err)
@@ -60,7 +65,9 @@ func GetDailyNews(updatableDays int) (map[string][]*News, error) {
 
 			createdAt, _ := time.Parse(time.RFC3339, hit.CreatedAt)
 			if time.Since(createdAt) > time.Duration(updatableDays)*24*time.Hour {
-				continue
+				// Optimization: Algolia search_by_date is strictly chronological.
+				// If we hit an old story, all subsequent stories and pages are even older.
+				return byDate, nil
 			}
 
 			newsURL := hit.URL

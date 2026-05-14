@@ -45,11 +45,19 @@ func GenDaily(updatableDays int) {
 		return
 	}
 
-	for dateKey, items := range dailyItems {
+	var allItems []*hn.News
+	for _, items := range dailyItems {
 		for i, item := range items {
 			item.Rank = i + 1
 		}
-		pullContentConcurrent(items)
+		allItems = append(allItems, items...)
+	}
+
+	// Performance: Pull content for all items across all days in parallel.
+	// This ensures the concurrency semaphore is fully utilized.
+	pullContentConcurrent(allItems)
+
+	for dateKey, items := range dailyItems {
 		path := filepath.Join("daily", dateKey, "index.html")
 		genPage(items, path)
 	}
