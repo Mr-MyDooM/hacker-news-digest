@@ -641,6 +641,46 @@ body::before {
 .post-item.search-hidden { display: none; }
 .post-item.search-match { border-left: 2px solid var(--neon); padding-left: 1rem; }
 
+#search-no-results {
+    padding: 4rem 1rem;
+    text-align: center;
+    color: var(--text-dim);
+}
+#search-no-results .no-results-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
+#search-no-results i {
+    color: var(--divider);
+}
+#search-no-results p {
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+.btn-neon {
+    background: var(--neon-dim);
+    color: var(--neon);
+    border: 1px solid var(--tag-border);
+    padding: 0.5rem 1.5rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-neon:hover {
+    background: var(--neon);
+    color: var(--dark-bg);
+    box-shadow: 0 0 15px var(--neon-glow);
+}
+.btn-neon:focus-visible {
+    outline: 2px solid var(--neon);
+    outline-offset: 2px;
+}
+
 @media (max-width: 768px) {
     #search-box { padding: 8px 10px; }
     #search-input { max-width: 100%; font-size: 0.9rem; }
