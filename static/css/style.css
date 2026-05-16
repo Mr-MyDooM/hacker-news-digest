@@ -627,6 +627,41 @@ body::before {
     color: var(--text-dim);
     opacity: 0.6;
 }
+/* =============================================
+   SEARCH EMPTY STATE
+   ============================================= */
+#search-no-results {
+    padding: 4rem 1rem;
+    text-align: center;
+    color: var(--text-dim);
+}
+#search-no-results.hidden { display: none !important; }
+.no-results-content i {
+    color: var(--divider);
+    margin-bottom: 1.5rem;
+}
+.no-results-content h3 {
+    color: var(--text);
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+.no-results-content p {
+    margin-bottom: 1.5rem;
+}
+.btn-neon {
+    background: var(--neon-dim);
+    color: var(--neon);
+    border: 1px solid var(--tag-border);
+    padding: 0.5rem 1.5rem;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+.btn-neon:hover {
+    background: var(--neon);
+    color: white;
+}
 #search-close {
     background: none;
     border: none;
