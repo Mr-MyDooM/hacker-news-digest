@@ -22,7 +22,7 @@ type ExtractResult struct {
 }
 
 func Extract(url string, maxLength int) (*ExtractResult, error) {
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := GetSafeClient(30 * time.Second)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
@@ -375,7 +375,7 @@ func countWords(s string) int {
 // that block direct scraping (paywalls, login walls, 403s).
 func ExtractViaJina(url string, maxLength int) (*ExtractResult, error) {
 	jinaURL := "https://r.jina.ai/" + url
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := GetSafeClient(30 * time.Second)
 	req, err := http.NewRequest("GET", jinaURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("jina request: %w", err)

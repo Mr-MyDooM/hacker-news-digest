@@ -22,7 +22,7 @@ type WebImage struct {
 }
 
 func FetchImage(srcURL, referrer, imageDir string) (*WebImage, error) {
-	client := &http.Client{Timeout: 15 * time.Second}
+	client := GetSafeClient(15 * time.Second)
 	req, err := http.NewRequest("GET", srcURL, nil)
 	if err != nil {
 		return nil, err

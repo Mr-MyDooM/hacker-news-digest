@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"time"
+
+	"github.com/mj/hacker-news-digest/extractor"
 )
 
 const algoliaURL = "https://hn.algolia.com/api/v1/search_by_date"
@@ -27,7 +28,7 @@ type algoliaHit struct {
 }
 
 func GetDailyNews(updatableDays int) (map[string][]*News, error) {
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := extractor.GetSafeClient(30 * time.Second)
 	seen := make(map[string]bool)
 	byDate := make(map[string][]*News)
 
