@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"strings"
+	"unicode"
 
 	"github.com/mj/hacker-news-digest/config"
 	"github.com/mj/hacker-news-digest/db"
@@ -62,8 +63,10 @@ func (n *News) PullContent() {
 	n.Cache = cached
 
 	if cached != nil && cached.Summary != "" {
-		// If cached model is final, or score doesn't warrant an LLM upgrade, return early
-		if cached.Model.IsFinal() || n.Score < cfg.OpenRouterScore {
+		// If cached summary is garbage (hallucinated, full of noise), force re-extraction
+		if isGarbageSummary(cached.Summary) {
+			log.Printf("Cache hit for %s but summary is garbage, re-extracting", n.URL)
+		} else if cached.Model.IsFinal() || n.Score < cfg.OpenRouterScore {
 			n.Summary = cached.Summary
 			n.SummarizedBy = cached.Model
 			// Restore cached image if we don't already have one
@@ -75,8 +78,9 @@ func (n *News) PullContent() {
 			}
 			log.Printf("Cache hit for %s (skipping fetch)", n.URL)
 			return
+		} else {
+			log.Printf("Cache hit for %s, but model %s needs LLM upgrade", n.URL, cached.Model)
 		}
-		log.Printf("Cache hit for %s, but model %s needs LLM upgrade", n.URL, cached.Model)
 	}
 
 	result, err := extractor.Extract(n.URL, 65536)
@@ -163,6 +167,70 @@ func isBlockedContent(content string) bool {
 		if strings.Contains(lower, strings.ToLower(p)) {
 			return true
 		}
+	}
+	return false
+}
+
+// isGarbageSummary detects cached summaries that are LLM hallucinations or noise.
+// These should force re-extraction rather than being treated as final.
+func isGarbageSummary(summary string) bool {
+	if len(summary) < 20 {
+		return false
+	}
+	// Very long summaries (>500 chars) are suspicious — LLM summaries should be concise
+	if len(summary) > 500 {
+		return true
+	}
+	// Check for repeated words: "word" repeated 10+ times in a short span
+	words := strings.Fields(summary)
+	if len(words) > 0 {
+		wordFreq := make(map[string]int, len(words))
+		for _, w := range words {
+			w = strings.Trim(w, ".,!?;:'\"()[]{}")
+			if len(w) > 1 {
+				wordFreq[w]++
+			}
+		}
+		// If a single word appears >20% of all words, it's likely hallucinated repetition
+		for _, count := range wordFreq {
+			if len(words) > 20 && count > len(words)/5 {
+				return true
+			}
+		}
+	}
+	// Low unique word ratio (repetitive garbage)
+	unique := make(map[string]bool)
+	for _, w := range words {
+		unique[strings.ToLower(w)] = true
+	}
+	if len(words) > 30 && float64(len(unique))/float64(len(words)) < 0.5 {
+		return true
+	}
+	// Low alphabetic ratio — too many symbols/noise characters
+	alpha := 0
+	total := 0
+	for _, r := range summary {
+		if r == ' ' || r == '\n' {
+			continue
+		}
+		total++
+		if unicode.IsLetter(r) {
+			alpha++
+		}
+	}
+	if total > 0 && float64(alpha)/float64(total) < 0.70 {
+		return true
+	}
+	// Code-like artifacts in summary (never valid in a natural language summary)
+	codePatterns := []string{"//", "{", "}", "=>", "->", "|", "!!", "??", ").", ");", "= "}
+	matches := 0
+	for _, p := range codePatterns {
+		if strings.Contains(summary, p) {
+			matches++
+		}
+	}
+	if matches >= 3 {
+		return true
 	}
 	return false
 }
