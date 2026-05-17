@@ -321,6 +321,14 @@ func (n *News) Summarize(content string) {
 		model = db.ModelPrefix
 	}
 
+	// Safety net: if LLM summary is still garbage (happens for stubborn pages),
+	// fall back to prefix to avoid caching trash.
+	if model != db.ModelPrefix && isGarbageSummary(summary) {
+		log.Printf("LLM summary for %s is garbage, falling back to prefix", n.URL)
+		summary = prefixSummary(content, cfg.SummarySize)
+		model = db.ModelPrefix
+	}
+
 	n.Summary = summary
 	n.SummarizedBy = model
 
