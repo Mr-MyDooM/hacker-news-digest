@@ -3,6 +3,7 @@ package extractor
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -84,6 +85,16 @@ func Extract(url string, maxLength int) (*ExtractResult, error) {
 	// Pick the first available image candidate
 	if result.Image == "" && len(bodyImgs) > 0 {
 		result.Image = bodyImgs[0]
+	}
+
+	// Validate content quality: if text looks like noise (low alphabetic ratio),
+	// try Jina as an alternative source before giving up.
+	if !isValidContent(result.Content) {
+		log.Printf("Poor content quality for %s (alpha ratio %.2f), retrying via Jina", url, alphaRatio(result.Content))
+		if jinaResult, err := ExtractViaJina(url, maxLength); err == nil {
+			jinaResult.Image = result.Image
+			return jinaResult, nil
+		}
 	}
 
 	// When body content is empty (paywalled, login wall, etc.), try Jina reader as proxy.
@@ -252,6 +263,8 @@ func extractContent(doc *goquery.Document, maxLength int) string {
 	// Remove non-content elements aggressively
 	doc.Find("script, style, nav, footer, header, iframe, form, noscript, svg, canvas, aside").Remove()
 	doc.Find("[class*=sidebar], [class*=comment], [class*=widget], [class*=meta], [class*=menu], [class*=nav-], [class*=footer], [id*=sidebar], [id*=comment], [id*=footer]").Remove()
+	doc.Find("[class*=related], [id*=related], [class*=recommend], [id*=recommend], [class*=suggestion], [id*=suggestion]").Remove()
+	doc.Find("[class*=discussion], [id*=discussion], [class*=thread], [id*=thread]").Remove()
 
 	article := doc.Find("article").First()
 	if article.Length() > 0 {
@@ -332,7 +345,15 @@ func findBestContent(sel *goquery.Selection, title string, best **goquery.Select
 			}
 		}
 
-		score := float64(textLen) * boost * titleBoost / (ld + 0.1)
+		// Alphabetic ratio boost: prefer prose, penalize only when very noisy
+		alphaBoost := alphaRatio(text)
+		if alphaBoost < 0.3 {
+			alphaBoost = 0.2 // heavily penalize non-prose (code, gibberish)
+		} else if alphaBoost < 0.5 {
+			alphaBoost = 0.7 // mildly penalize mixed content
+		}
+
+		score := float64(textLen) * boost * titleBoost * alphaBoost / (ld + 0.1)
 		if score > *bestScore {
 			*bestScore = score
 			*best = child
@@ -409,6 +430,73 @@ func linkDensity(sel *goquery.Selection) float64 {
 	return float64(len(linkText)) / float64(len(text))
 }
 
+// isValidContent checks that extracted text looks like real article content, not noise.
+func isValidContent(text string) bool {
+	if len(text) < 200 {
+		return false
+	}
+	return alphaRatio(text) >= 0.50
+}
+
+// alphaRatio returns the fraction of non-space characters that are alphabetic.
+func alphaRatio(text string) float64 {
+	if len(text) == 0 {
+		return 0
+	}
+	alpha := 0
+	total := 0
+	for _, r := range text {
+		if r == ' ' || r == '\n' || r == '\t' || r == '\r' {
+			continue
+		}
+		total++
+		if unicode.IsLetter(r) {
+			alpha++
+		}
+	}
+	if total == 0 {
+		return 0
+	}
+	return float64(alpha) / float64(total)
+}
+
+// isGibberishLine detects lines that are unlikely to be real prose:
+// too many non-alphanumeric characters, code fragments, or noise.
+func isGibberishLine(line string) bool {
+	runes := []rune(line)
+	if len(runes) < 5 {
+		return true
+	}
+	alpha := 0
+	special := 0
+	for _, r := range runes {
+		if unicode.IsLetter(r) {
+			alpha++
+		} else if !unicode.IsSpace(r) && !unicode.IsDigit(r) && !unicode.IsPunct(r) {
+			special++
+		}
+	}
+	// If >30% of chars are non-standard special chars, likely noise
+	if special > 0 && float64(special)/float64(len(runes)) > 0.30 {
+		return true
+	}
+	// If <40% alphabetic, too many symbols/code
+	if float64(alpha)/float64(len(runes)) < 0.40 {
+		return true
+	}
+	// Code-like lines: too many brackets/semicolons
+	codeChars := 0
+	for _, r := range runes {
+		if r == '{' || r == '}' || r == '(' || r == ')' || r == ';' || r == '=' || r == '<' || r == '>' {
+			codeChars++
+		}
+	}
+	if codeChars > 0 && float64(codeChars)/float64(len(runes)) > 0.10 {
+		return true
+	}
+	return false
+}
+
 func cleanText(text string, maxLength int) string {
 	text = strings.ReplaceAll(text, "\t", " ")
 	text = strings.ReplaceAll(text, "\r", "")
@@ -423,6 +511,10 @@ func cleanText(text string, maxLength int) string {
 		// Skip very short lines (noise, navigation, metadata)
 		wordCount := countWords(line)
 		if wordCount < 10 {
+			continue
+		}
+		// Skip gibberish and code-like lines
+		if isGibberishLine(line) {
 			continue
 		}
 		// Skip lines that look like metadata (dates, author, share, tags)
