@@ -1,19 +1,20 @@
 package extractor
 
 import (
+	"bytes"
 	"crypto/md5"
 	"fmt"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
-	_ "golang.org/x/image/webp"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
+
+	"golang.org/x/image/webp"
 )
 
 type WebImage struct {
@@ -53,7 +54,7 @@ func FetchImage(srcURL, referrer, imageDir string) (*WebImage, error) {
 		return nil, fmt.Errorf("image too small: %d bytes", len(data))
 	}
 
-	img, _, err := image.Decode(strings.NewReader(string(data)))
+	img, _, err := decodeImage(data)
 	if err != nil {
 		return nil, fmt.Errorf("decode image: %w", err)
 	}
@@ -79,6 +80,26 @@ func FetchImage(srcURL, referrer, imageDir string) (*WebImage, error) {
 	}
 
 	return &WebImage{URL: "/image/" + filename, Width: w, Height: h}, nil
+}
+
+func decodeImage(data []byte) (image.Image, string, error) {
+	img, format, err := image.Decode(bytes.NewReader(data))
+	if err == nil {
+		return img, format, nil
+	}
+	if isWebP(data) {
+		img, err := webp.Decode(bytes.NewReader(data))
+		if err == nil {
+			return img, "webp", nil
+		}
+	}
+	return nil, "", err
+}
+
+func isWebP(data []byte) bool {
+	return len(data) > 12 &&
+		data[0] == 0x52 && data[1] == 0x49 && data[2] == 0x46 && data[3] == 0x46 &&
+		data[8] == 0x57 && data[9] == 0x45 && data[10] == 0x42 && data[11] == 0x50
 }
 
 func detectExt(data []byte) string {
