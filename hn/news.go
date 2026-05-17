@@ -81,8 +81,8 @@ func (n *News) PullContent() {
 
 	result, err := extractor.Extract(n.URL, cfg.SummarySize*3)
 	if err != nil {
-		log.Printf("Failed to fetch %s: %v", n.URL, err)
-		n.Summary = ""
+		log.Printf("Failed to fetch %s: %v, using title as summary", n.URL, err)
+		n.Summary = n.Title
 		n.SummarizedBy = db.ModelPrefix
 		return
 	}
@@ -116,6 +116,8 @@ func (n *News) PullContent() {
 		if err == nil {
 			n.Image = img
 			saveImageToCache(n)
+		} else {
+			log.Printf("Failed to fetch image for %s: %v", n.URL, err)
 		}
 	}
 
@@ -165,6 +167,7 @@ func (n *News) Summarize(content string) {
 	if len([]rune(content)) <= cfg.SummarySize {
 		n.Summary = content
 		n.SummarizedBy = db.ModelPrefix
+		db.PutSummary(&db.Summary{URL: n.URL, Summary: content, Model: db.ModelPrefix})
 		return
 	}
 
@@ -248,7 +251,7 @@ func (n *News) Summarize(content string) {
 	n.Summary = summary
 	n.SummarizedBy = model
 
-	if model != db.ModelPrefix && summary != "" {
+	if summary != "" {
 		entry := &db.Summary{
 			URL:     n.URL,
 			Summary: summary,

@@ -79,7 +79,7 @@ func Extract(url string, maxLength int) (*ExtractResult, error) {
 	}
 
 	// When body content is empty (paywalled, login wall, etc.), try Jina reader as proxy.
-	if result.Content == "" && result.Description == "" {
+	if result.Content == "" {
 		if jinaResult, err := ExtractViaJina(url, maxLength); err == nil {
 			jinaResult.Image = result.Image // preserve og:image from original
 			return jinaResult, nil
@@ -280,13 +280,6 @@ func extractContent(doc *goquery.Document, maxLength int) string {
 	if bestLen > 0 {
 		return cleanText(best.Text(), maxLength)
 	}
-
-	doc.Find("p, h1, h2, h3, h4, h5, h6, li").Each(func(i int, sel *goquery.Selection) {
-		text := strings.TrimSpace(sel.Text())
-		if utf8.RuneCountInString(text) > 20 {
-			// append to result, we'll collect manually
-		}
-	})
 
 	return cleanText(body.Text(), maxLength)
 }
