@@ -9,9 +9,11 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"golang.org/x/image/webp"
@@ -54,9 +56,22 @@ func FetchImage(srcURL, referrer, imageDir string) (*WebImage, error) {
 		return nil, fmt.Errorf("image too small: %d bytes", len(data))
 	}
 
+	os.MkdirAll(imageDir, 0755)
+
+	ct := resp.Header.Get("Content-Type")
+	ext := detectExt(data, ct)
+	hash := md5.Sum(data)
+	filename := fmt.Sprintf("%x.%s", hash, ext)
+	dest := filepath.Join(imageDir, filename)
+
+	if _, err := os.Stat(dest); os.IsNotExist(err) {
+		os.WriteFile(dest, data, 0644)
+	}
+
 	img, _, err := decodeImage(data)
 	if err != nil {
-		return nil, fmt.Errorf("decode image: %w", err)
+		log.Printf("Serving undecoded image %s (%s, %d bytes): %v", filename, ext, len(data), err)
+		return &WebImage{URL: "/image/" + filename, Width: 0, Height: 0}, nil
 	}
 	bounds := img.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
@@ -67,16 +82,8 @@ func FetchImage(srcURL, referrer, imageDir string) (*WebImage, error) {
 	if w > 3*h || h > 3*w {
 		return nil, fmt.Errorf("image bad aspect ratio: %dx%d", w, h)
 	}
-
-	os.MkdirAll(imageDir, 0755)
-
-	ext := detectExt(data)
-	hash := md5.Sum(data)
-	filename := fmt.Sprintf("%x.%s", hash, ext)
-	dest := filepath.Join(imageDir, filename)
-
-	if _, err := os.Stat(dest); os.IsNotExist(err) {
-		os.WriteFile(dest, data, 0644)
+	if isMostlyWhite(img) {
+		return nil, fmt.Errorf("image mostly white pixels")
 	}
 
 	return &WebImage{URL: "/image/" + filename, Width: w, Height: h}, nil
@@ -102,9 +109,9 @@ func isWebP(data []byte) bool {
 		data[8] == 0x57 && data[9] == 0x45 && data[10] == 0x42 && data[11] == 0x50
 }
 
-func detectExt(data []byte) string {
+func detectExt(data []byte, contentType string) string {
 	if len(data) < 4 {
-		return "png"
+		return extFromContentType(contentType, "png")
 	}
 	if data[0] == 0xFF && data[1] == 0xD8 {
 		return "jpg"
@@ -118,7 +125,61 @@ func detectExt(data []byte) string {
 	if data[0] == 0x52 && data[1] == 0x49 && data[2] == 0x46 && data[3] == 0x46 {
 		return "webp"
 	}
-	return "png"
+	// AVIF: ISOBMFF container with ftyp box
+	if len(data) > 12 && data[4] == 'f' && data[5] == 't' && data[6] == 'y' && data[7] == 'p' &&
+		((data[8] == 'a' && data[9] == 'v' && data[10] == 'i' && data[11] == 'f') ||
+			(data[8] == 'a' && data[9] == 'v' && data[10] == 'i' && data[11] == 's')) {
+		return "avif"
+	}
+	// SVG: <?xml or <svg
+	if len(data) > 4 && data[0] == '<' && (data[1] == 's' || data[1] == 'S') && (data[2] == 'v' || data[2] == 'V') && data[3] == 'g' {
+		return "svg"
+	}
+	if len(data) > 5 && data[0] == '<' && data[1] == '?' && data[2] == 'x' && data[3] == 'm' && data[4] == 'l' {
+		return "svg"
+	}
+	return extFromContentType(contentType, "png")
+}
+
+func extFromContentType(ct, fallback string) string {
+	switch {
+	case strings.Contains(ct, "jpeg"), strings.Contains(ct, "jpg"):
+		return "jpg"
+	case strings.Contains(ct, "png"):
+		return "png"
+	case strings.Contains(ct, "gif"):
+		return "gif"
+	case strings.Contains(ct, "webp"):
+		return "webp"
+	case strings.Contains(ct, "avif"):
+		return "avif"
+	case strings.Contains(ct, "svg"):
+		return "svg"
+	default:
+		return fallback
+	}
+}
+
+// isMostlyWhite checks if >99% of sampled pixels are near-white.
+// Samples in a grid pattern (every 20th pixel) to avoid scanning the full image.
+func isMostlyWhite(img image.Image) bool {
+	bounds := img.Bounds()
+	total := 0
+	white := 0
+	for y := bounds.Min.Y; y < bounds.Max.Y; y += 20 {
+		for x := bounds.Min.X; x < bounds.Max.X; x += 20 {
+			r, g, b, _ := img.At(x, y).RGBA()
+			// RGBA() returns 16-bit values (0-65535)
+			if r>>8 > 250 && g>>8 > 250 && b>>8 > 250 {
+				white++
+			}
+			total++
+		}
+	}
+	if total == 0 {
+		return false
+	}
+	return float64(white)/float64(total) > 0.99
 }
 
 func (w *WebImage) GetSizeStyle(maxWidth int) string {

@@ -79,7 +79,7 @@ func (n *News) PullContent() {
 		log.Printf("Cache hit for %s, but model %s needs LLM upgrade", n.URL, cached.Model)
 	}
 
-	result, err := extractor.Extract(n.URL, cfg.SummarySize*3)
+	result, err := extractor.Extract(n.URL, 65536)
 	if err != nil {
 		log.Printf("Failed to fetch %s: %v, using title as summary", n.URL, err)
 		n.Summary = n.Title
@@ -97,7 +97,7 @@ func (n *News) PullContent() {
 
 	if isBlockedContent(n.Content) {
 		log.Printf("Blocked content for %s, retrying via Jina", n.URL)
-		if jinaResult, jinaErr := extractor.ExtractViaJina(n.URL, cfg.SummarySize*3); jinaErr == nil && jinaResult.Content != "" {
+		if jinaResult, jinaErr := extractor.ExtractViaJina(n.URL, 65536); jinaErr == nil && jinaResult.Content != "" {
 			n.Content = jinaResult.Content
 			log.Printf("Jina succeeded for %s", n.URL)
 		} else {
@@ -110,14 +110,19 @@ func (n *News) PullContent() {
 		}
 	}
 
-	// Fetch og:image when available
-	if result.Image != "" && cfg.ImageDir != "" && n.Image == nil {
-		img, err := extractor.FetchImage(result.Image, n.URL, cfg.ImageDir)
-		if err == nil {
-			n.Image = img
-			saveImageToCache(n)
-		} else {
-			log.Printf("Failed to fetch image for %s: %v", n.URL, err)
+	// Fetch image from candidates (meta image first, then body images)
+	if cfg.ImageDir != "" && n.Image == nil {
+		for _, imgURL := range result.Images {
+			if imgURL == "" {
+				continue
+			}
+			img, err := extractor.FetchImage(imgURL, n.URL, cfg.ImageDir)
+			if err == nil {
+				n.Image = img
+				saveImageToCache(n)
+				break
+			}
+			log.Printf("Failed to fetch image candidate %s for %s: %v", imgURL, n.URL, err)
 		}
 	}
 
