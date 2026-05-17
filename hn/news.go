@@ -47,6 +47,28 @@ func Init(c *config.Config) {
 	}
 }
 
+func PrefetchSummaries(newsList []*News) {
+	urls := make([]string, len(newsList))
+	for i, n := range newsList {
+		urls[i] = n.URL
+	}
+	summaries, err := db.GetSummaries(urls)
+	if err != nil {
+		log.Printf("Prefetch cache error: %v", err)
+		return
+	}
+
+	for _, n := range newsList {
+		if s, ok := summaries[n.URL]; ok {
+			n.Cache = s
+		} else {
+			// Pre-populate with empty summary to signal it was checked
+			n.Cache = &db.Summary{URL: n.URL}
+		}
+	}
+	log.Printf("Prefetched %d summaries from cache", len(summaries))
+}
+
 func (n *News) PullContent() {
 	if n.IsHiringJob() {
 		n.Content = n.Title
@@ -56,11 +78,17 @@ func (n *News) PullContent() {
 	}
 
 	// Optimization: Check cache FIRST to avoid expensive network I/O
-	cached, err := db.GetSummary(n.URL)
-	if err != nil {
-		log.Printf("Cache error for %s: %v", n.URL, err)
+	var cached *db.Summary
+	if n.Cache != nil {
+		cached = n.Cache
+	} else {
+		var err error
+		cached, err = db.GetSummary(n.URL)
+		if err != nil {
+			log.Printf("Cache error for %s: %v", n.URL, err)
+		}
+		n.Cache = cached
 	}
-	n.Cache = cached
 
 	if cached != nil && cached.Summary != "" {
 		// If cached summary is garbage (hallucinated, full of noise), force re-extraction

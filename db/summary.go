@@ -3,8 +3,59 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
+
+func GetSummaries(urls []string) (map[string]*Summary, error) {
+	if cfg.DisableSummaryCache || len(urls) == 0 {
+		return make(map[string]*Summary), nil
+	}
+
+	res := make(map[string]*Summary, len(urls))
+
+	for i := 0; i < len(urls); i += 900 {
+		end := i + 900
+		if end > len(urls) {
+			end = len(urls)
+		}
+		chunk := urls[i:end]
+
+		placeholders := make([]string, len(chunk))
+		args := make([]interface{}, len(chunk))
+		for j, u := range chunk {
+			placeholders[j] = "?"
+			args[j] = u
+		}
+
+		query := fmt.Sprintf(`SELECT url, summary, model, birth, access, favicon, image_name, image_json
+			FROM summary WHERE url IN (%s)`, strings.Join(placeholders, ","))
+
+		rows, err := DB.Query(query, args...)
+		if err != nil {
+			return nil, fmt.Errorf("get summaries chunk: %w", err)
+		}
+
+		for rows.Next() {
+			s := &Summary{}
+			var birth, access string
+			err := rows.Scan(&s.URL, &s.Summary, &s.Model, &birth, &access, &s.Favicon, &s.ImageName, &s.ImageJSON)
+			if err != nil {
+				rows.Close()
+				return nil, fmt.Errorf("scan summary: %w", err)
+			}
+			s.Birth, _ = time.Parse("2006-01-02 15:04:05", birth)
+			s.Access, _ = time.Parse("2006-01-02 15:04:05", access)
+			res[s.URL] = s
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
+	}
+
+	return res, nil
+}
 
 func GetSummary(url string) (*Summary, error) {
 	if cfg.DisableSummaryCache {

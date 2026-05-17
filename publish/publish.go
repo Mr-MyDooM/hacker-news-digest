@@ -65,6 +65,8 @@ func GenDaily(updatableDays int) {
 // pullContentConcurrent fetches content and generates summaries for a list of news items concurrently.
 // It uses a semaphore to limit the number of concurrent requests to avoid overwhelming external sites.
 func pullContentConcurrent(newsList []*hn.News) {
+	hn.PrefetchSummaries(newsList)
+
 	const maxConcurrent = 10
 	sem := make(chan struct{}, maxConcurrent)
 	var wg sync.WaitGroup
