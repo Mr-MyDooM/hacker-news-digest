@@ -5,3 +5,7 @@
 ## 2026-05-16 - Search Empty State and Accessibility
 **Learning:** Interactive empty states should provide immediate feedback via clear messaging and actionable 'Clear' buttons. Using `role="status"` and `aria-live="polite"` ensures screen reader users are notified of dynamic changes without interrupting their flow.
 **Action:** Always include a recovery action (like a reset button) in empty states and use appropriate ARIA live regions for status updates.
+
+## 2026-05-18 - Dropdown Interaction and Placeholder UI
+**Learning:** When adding interactive elements inside a Bootstrap dropdown (e.g., a "Show More" toggle), `event.stopPropagation()` is essential to prevent the menu from closing prematurely on click. Additionally, client-side features like "reading time" should hide their associated icons by default until calculation is successful to avoid visual clutter and "placeholder" glitches.
+**Action:** Use hidden containers for client-side UI and ensure dynamic dropdowns remain scrollable with `max-height` and `overflow-y`.

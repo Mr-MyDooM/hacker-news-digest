@@ -145,6 +145,16 @@ $(function() {
     setupSortHandlers();
     setupFilterHandlers();
 
+    // Archive "More..." toggle
+    $('#more-archive').click(function(e) {
+        e.preventDefault();
+        e.stopPropagation(); // Keep dropdown open
+        $('.archive-more').removeClass('hidden');
+        $('#more-archive-divider').remove();
+        $(this).closest('li').remove();
+        return false;
+    });
+
     // Restore state from URL hash
     const urlParams = new URLSearchParams(window.location.hash.substring(1));
 
@@ -268,6 +278,9 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
         if (words < 10) return;
         var min = Math.max(1, Math.round(words / 200));
         el.textContent = min + ' min read';
+        // Show container only if we have a reading time
+        var container = el.closest('.reading-time-container');
+        if (container) container.classList.remove('hidden');
     });
 })();
 
