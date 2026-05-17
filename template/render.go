@@ -170,7 +170,7 @@ func RenderFeed(newsList []*hn.News, siteURL string) string {
 		b.WriteString(fmt.Sprintf("    <link href=\"%s\"/>\n", escapeXML(news.URL)))
 		b.WriteString(fmt.Sprintf("    <id>%s/#%s</id>\n", siteURL, news.Slug()))
 		b.WriteString(fmt.Sprintf("    <updated>%s</updated>\n", news.SubmitTime.Format(time.RFC3339)))
-		b.WriteString(fmt.Sprintf("    <content type=\"html\"><![CDATA[%s]]></content>\n", content))
+		b.WriteString(fmt.Sprintf("    <content type=\"html\"><![CDATA[%s]]></content>\n", strings.ReplaceAll(content, "]]>", "]]&gt;")))
 		if news.Author != "" {
 			b.WriteString(fmt.Sprintf("    <author><name>%s</name></author>\n", escapeXML(news.Author)))
 		}
@@ -186,6 +186,7 @@ func escapeXML(s string) string {
 	s = strings.ReplaceAll(s, "<", "&lt;")
 	s = strings.ReplaceAll(s, ">", "&gt;")
 	s = strings.ReplaceAll(s, "\"", "&quot;")
+	s = strings.ReplaceAll(s, "'", "&apos;")
 	return s
 }
 
