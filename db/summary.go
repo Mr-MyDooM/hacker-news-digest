@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -43,17 +44,103 @@ func PutSummary(s *Summary) error {
 	return nil
 }
 
-func FilterURLs(urls []string) (map[string]bool, error) {
-	found := make(map[string]bool)
-	for _, u := range urls {
-		var count int
-		err := DB.QueryRow(`SELECT COUNT(*) FROM summary WHERE url = ?`, u).Scan(&count)
+func GetSummaries(urls []string) (map[string]*Summary, error) {
+	if cfg.DisableSummaryCache || len(urls) == 0 {
+		return make(map[string]*Summary), nil
+	}
+
+	summaries := make(map[string]*Summary)
+
+	// SQLite has a limit on parameters (usually 999), so we chunk the requests.
+	const chunkSize = 900
+	for i := 0; i < len(urls); i += chunkSize {
+		end := i + chunkSize
+		if end > len(urls) {
+			end = len(urls)
+		}
+		chunk := urls[i:end]
+
+		placeholders := make([]string, len(chunk))
+		args := make([]interface{}, len(chunk))
+		for j, u := range chunk {
+			placeholders[j] = "?"
+			args[j] = u
+		}
+
+		query := fmt.Sprintf(`SELECT url, summary, model, birth, access, favicon, image_name, image_json
+			FROM summary WHERE url IN (%s)`, strings.Join(placeholders, ","))
+
+		err := func() error {
+			rows, err := DB.Query(query, args...)
+			if err != nil {
+				return fmt.Errorf("get summaries: %w", err)
+			}
+			defer rows.Close()
+
+			for rows.Next() {
+				s := &Summary{}
+				var birth, access string
+				err := rows.Scan(&s.URL, &s.Summary, &s.Model, &birth, &access, &s.Favicon, &s.ImageName, &s.ImageJSON)
+				if err != nil {
+					return fmt.Errorf("scan summary: %w", err)
+				}
+				s.Birth, _ = time.Parse("2006-01-02 15:04:05", birth)
+				s.Access, _ = time.Parse("2006-01-02 15:04:05", access)
+				summaries[s.URL] = s
+			}
+			return nil
+		}()
 		if err != nil {
 			return nil, err
 		}
-		if count > 0 {
-			found[u] = true
+	}
+
+	return summaries, nil
+}
+
+func FilterURLs(urls []string) (map[string]bool, error) {
+	found := make(map[string]bool)
+	if len(urls) == 0 {
+		return found, nil
+	}
+
+	// SQLite has a limit on parameters (usually 999), so we chunk the requests.
+	const chunkSize = 900
+	for i := 0; i < len(urls); i += chunkSize {
+		end := i + chunkSize
+		if end > len(urls) {
+			end = len(urls)
+		}
+		chunk := urls[i:end]
+
+		placeholders := make([]string, len(chunk))
+		args := make([]interface{}, len(chunk))
+		for j, u := range chunk {
+			placeholders[j] = "?"
+			args[j] = u
+		}
+
+		query := fmt.Sprintf(`SELECT url FROM summary WHERE url IN (%s)`, strings.Join(placeholders, ","))
+
+		err := func() error {
+			rows, err := DB.Query(query, args...)
+			if err != nil {
+				return fmt.Errorf("filter urls: %w", err)
+			}
+			defer rows.Close()
+
+			for rows.Next() {
+				var u string
+				if err := rows.Scan(&u); err == nil {
+					found[u] = true
+				}
+			}
+			return nil
+		}()
+		if err != nil {
+			return nil, err
 		}
 	}
+
 	return found, nil
 }
