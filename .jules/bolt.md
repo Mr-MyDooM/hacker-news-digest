@@ -9,3 +9,7 @@
 ## 2026-05-20 - Optimized Daily Fetching
 **Learning:** Sequential processing of daily batches in 'GenDaily' was leaving the concurrency semaphore idle between batches. Aggregating all items into a single slice before fetching maximizes worker utilization. Additionally, Algolia's 'search_by_date' can be heavily optimized with 'numericFilters' and early termination since it is strictly chronological.
 **Action:** Always batch I/O-bound items into the largest possible single set before processing. Use server-side filtering (like Algolia numericFilters) to minimize over-fetching.
+
+## 2026-05-19 - Batch Database Operations
+**Learning:** Concurrent execution of individual database queries (N+1 pattern) leads to high contention and overhead, especially with SQLite's serialized writes. Implementing batch fetches using `IN` clauses significantly reduces the number of roundtrips and lock contention. SQLite's 999 parameter limit must be handled by chunking.
+**Action:** Always use batch queries (SQL `IN` clauses) with chunking (~900 items) when fetching data for a list of items to avoid the N+1 query problem.
