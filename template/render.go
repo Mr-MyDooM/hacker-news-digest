@@ -145,9 +145,9 @@ func RenderFeed(newsList []*hn.News, siteURL string) string {
 	b.WriteString(`<feed xmlns="http://www.w3.org/2005/Atom">` + "\n")
 	b.WriteString(fmt.Sprintf("  <title>HN Summary</title>\n"))
 	b.WriteString(fmt.Sprintf("  <updated>%s</updated>\n", now.Format(time.RFC3339)))
-	b.WriteString(fmt.Sprintf("  <id>%s/</id>\n", siteURL))
-	b.WriteString(fmt.Sprintf("  <link href=\"%s/feed.xml\" rel=\"self\"/>\n", siteURL))
-	b.WriteString(fmt.Sprintf("  <author><name>Hacker News Digest</name><uri>%s</uri></author>\n", siteURL))
+	b.WriteString(fmt.Sprintf("  <id>%s/</id>\n", escapeXML(siteURL)))
+	b.WriteString(fmt.Sprintf("  <link href=\"%s/feed.xml\" rel=\"self\"/>\n", escapeXML(siteURL)))
+	b.WriteString(fmt.Sprintf("  <author><name>Hacker News Digest</name><uri>%s</uri></author>\n", escapeXML(siteURL)))
 
 	for _, news := range newsList {
 		if news.Score <= 20 {
@@ -155,20 +155,20 @@ func RenderFeed(newsList []*hn.News, siteURL string) string {
 		}
 		imgTag := ""
 		if news.Image != nil {
-			imgTag = fmt.Sprintf("<img src=\"%s\" style=\"%s\"/><br/>", news.Image.URL, news.Image.GetSizeStyle(220))
+			imgTag = fmt.Sprintf("<img src=\"%s\" style=\"%s\"/><br/>", escapeXML(news.Image.URL), news.Image.GetSizeStyle(220))
 		}
-		summaryLink := fmt.Sprintf(" <a href=\"%s/#%s\">[summary]</a>", siteURL, news.Slug())
+		summaryLink := fmt.Sprintf(" <a href=\"%s/#%s\">[summary]</a>", escapeXML(siteURL), news.Slug())
 		commentsLink := ""
 		if news.CommentURL != "" {
-			commentsLink = fmt.Sprintf(" <a href=\"%s\">[comments]</a>", news.CommentURL)
+			commentsLink = fmt.Sprintf(" <a href=\"%s\">[comments]</a>", escapeXML(news.CommentURL))
 		}
 
-		content := imgTag + news.Summary + summaryLink + commentsLink
+		content := imgTag + escapeXML(news.Summary) + summaryLink + commentsLink
 
 		b.WriteString(fmt.Sprintf("  <entry>\n"))
 		b.WriteString(fmt.Sprintf("    <title>%s</title>\n", escapeXML(news.Title)))
 		b.WriteString(fmt.Sprintf("    <link href=\"%s\"/>\n", escapeXML(news.URL)))
-		b.WriteString(fmt.Sprintf("    <id>%s/#%s</id>\n", siteURL, news.Slug()))
+		b.WriteString(fmt.Sprintf("    <id>%s/#%s</id>\n", escapeXML(siteURL), news.Slug()))
 		b.WriteString(fmt.Sprintf("    <updated>%s</updated>\n", news.SubmitTime.Format(time.RFC3339)))
 		b.WriteString(fmt.Sprintf("    <content type=\"html\"><![CDATA[%s]]></content>\n", strings.ReplaceAll(content, "]]>", "]]&gt;")))
 		if news.Author != "" {
