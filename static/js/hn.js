@@ -125,6 +125,16 @@ function setupSortHandlers() {
     });
 }
 
+function setupArchiveHandlers() {
+    $('#more-archive').click(function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $('.hidden-archive').removeClass('hidden');
+        $('.more-archive-item').addClass('hidden');
+        return false;
+    });
+}
+
 function setupFilterHandlers() {
     $('.filter-dropdown [data-filter]').click(function() {
         const raw = $(this).data('filter');
@@ -144,6 +154,7 @@ function PreviewImage(src) {
 $(function() {
     setupSortHandlers();
     setupFilterHandlers();
+    setupArchiveHandlers();
 
     // Restore state from URL hash
     const urlParams = new URLSearchParams(window.location.hash.substring(1));

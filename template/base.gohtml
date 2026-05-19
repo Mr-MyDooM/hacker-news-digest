@@ -91,16 +91,15 @@
             <ul class="nav navbar-nav nav-pills">
                 <li><a href="/">Front</a></li>
                 <li><a href="/daily/{{if .DailyLinks}}{{(index .DailyLinks 0)}}{{end}}/">Past</a></li>
-                <li class="dropdown">
+                <li class="dropdown archive-dropdown">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">Archive <span class="caret"></span></a>
                     <ul class="dropdown-menu" role="menu">
                         {{range $i, $link := .DailyLinks}}
-                            {{if lt $i 10}}
-                                <li><a href="/daily/{{$link}}/">{{$link}}</a></li>
-                            {{else if eq $i 10}}
-                                <li class="divider"></li>
-                                <li><a href="#" id="more-archive">More...</a></li>
-                            {{end}}
+                            <li{{if ge $i 10}} class="hidden-archive hidden"{{end}}><a href="/daily/{{$link}}/">{{$link}}</a></li>
+                        {{end}}
+                        {{if gt (len .DailyLinks) 10}}
+                            <li class="divider more-archive-item"></li>
+                            <li class="more-archive-item"><a href="#" id="more-archive">More...</a></li>
                         {{end}}
                     </ul>
                 </li>
