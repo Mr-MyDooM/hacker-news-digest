@@ -59,5 +59,22 @@ func isRestrictedIP(ip net.IP) bool {
 	if ip.IsPrivate() {
 		return true
 	}
+
+	// Extra restricted ranges for defense-in-depth SSRF protection
+	if ip4 := ip.To4(); ip4 != nil {
+		// 0.0.0.0/8 (Current network / source address)
+		if ip4[0] == 0 {
+			return true
+		}
+		// Shared Address Space / CGNAT (100.64.0.0/10) - RFC 6598
+		if ip4[0] == 100 && (ip4[1]&0xc0) == 64 {
+			return true
+		}
+		// Benchmarking (198.18.0.0/15) - RFC 2544
+		if ip4[0] == 198 && (ip4[1]&0xfe) == 18 {
+			return true
+		}
+	}
+
 	return false
 }
