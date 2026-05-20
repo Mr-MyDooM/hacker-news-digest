@@ -156,6 +156,14 @@ $(function() {
     setupFilterHandlers();
     setupArchiveHandlers();
 
+    // Initialize Bootstrap tooltips
+    if ($.fn.tooltip) {
+        $('[data-toggle="tooltip"]').tooltip({
+            trigger: 'hover',
+            container: 'body'
+        });
+    }
+
     // Restore state from URL hash
     const urlParams = new URLSearchParams(window.location.hash.substring(1));
 
@@ -210,12 +218,22 @@ $('.post-item .share-icon').click(function(e) {
     } else if (navigator.clipboard) {
         navigator.clipboard.writeText(url).then(function() {
             const icon = btn.find('i');
-            const originalLabel = btn.attr('aria-label');
+            const originalTitle = btn.attr('data-original-title') || btn.attr('title');
+
             icon.removeClass('fa-share-alt').addClass('fa-check');
-            btn.attr('aria-label', 'Permalink copied!');
+
+            // Update tooltip if available
+            if ($.fn.tooltip) {
+                btn.attr('title', 'Permalink copied!').tooltip('fixTitle').tooltip('show');
+            }
+
             setTimeout(() => {
                 icon.removeClass('fa-check').addClass('fa-share-alt');
-                btn.attr('aria-label', originalLabel);
+                if ($.fn.tooltip) {
+                    btn.attr('title', originalTitle).tooltip('fixTitle').tooltip('hide');
+                } else {
+                    btn.attr('title', originalTitle);
+                }
             }, 1500);
         });
     }

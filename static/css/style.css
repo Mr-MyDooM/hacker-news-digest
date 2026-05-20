@@ -784,16 +784,26 @@ body::before {
 /* =============================================
    TOOLTIP
    ============================================= */
+.tooltip.in {
+    opacity: 1;
+}
+
 .tooltip-inner {
-    background: var(--nav-bg);
+    background-color: var(--nav-bg);
     border: 1px solid var(--divider);
     color: var(--text);
     border-radius: 6px;
     font-size: 0.78rem;
+    padding: 6px 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
-.tooltip.top .tooltip-arrow { border-top-color: var(--divider); }
-.tooltip.bottom .tooltip-arrow { border-bottom-color: var(--divider); }
+.tooltip.top .tooltip-arrow { border-top-color: var(--divider) !important; }
+.tooltip.bottom .tooltip-arrow { border-bottom-color: var(--divider) !important; }
+.tooltip.left .tooltip-arrow { border-left-color: var(--divider) !important; }
+.tooltip.right .tooltip-arrow { border-right-color: var(--divider) !important; }
 
 /* =============================================
    ADS PLACEHOLDER

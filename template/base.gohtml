@@ -122,12 +122,12 @@
                     </ul>
                 </li>
                 <li>
-                    <button id="search-toggle" title="Search" aria-label="Search" aria-expanded="false" aria-controls="search-box">
+                    <button id="search-toggle" title="Search (/)" aria-label="Search" aria-expanded="false" aria-controls="search-box" data-toggle="tooltip" data-placement="bottom">
                         <i class="fa fa-search"></i>
                     </button>
                 </li>
                 <li>
-                    <button id="theme-toggle" title="Toggle theme" aria-label="Toggle theme">
+                    <button id="theme-toggle" title="Toggle theme" aria-label="Toggle theme" data-toggle="tooltip" data-placement="bottom">
                         <i class="fa fa-moon-o"></i>
                     </button>
                 </li>
@@ -174,7 +174,7 @@
             </span>
             {{if $news.Summary}}<span class="label label-info summary-model"><i class="fa fa-ellipsis-h"></i> {{$news.SummarizedBy}}</span>{{end}}
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> <span class="reading-time" data-slug="{{$news.Slug}}"></span>
-            <button class="share-icon" title="Share permalink" data-slug="{{$news.Slug}}" aria-label="Share permalink">
+            <button class="share-icon" title="Share permalink" data-slug="{{$news.Slug}}" aria-label="Share permalink" data-toggle="tooltip" data-placement="top">
                 <i class="fa fa-share-alt"></i>
             </button>
             {{if $news.CommentURL}}
@@ -188,7 +188,7 @@
         {{if or $news.Summary $news.Image}}
         <div class="post-summary">
             {{if $news.Image}}
-            <button class="feature-image" aria-label="Zoom feature image">
+            <button class="feature-image" aria-label="Zoom feature image" title="Zoom image" data-toggle="tooltip" data-placement="top">
                 <img src="{{$news.Image.URL}}" alt="feature image" loading="lazy">
             </button>
             {{end}}
