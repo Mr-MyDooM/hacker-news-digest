@@ -140,11 +140,6 @@
         </div>
     </nav>
 
-    <div id="search-no-results" class="hidden search-no-results">
-        <p>No stories match your search.</p>
-        <button id="search-clear" class="btn-neon">Clear search</button>
-    </div>
-
     {{range $i, $news := .NewsList}}
     {{if and (not $.DisableAds) $.AdsenseID (gt $i 0) (eq (mod $i 4) 0)}}
     <div class="post-item ad-unit">

@@ -94,6 +94,10 @@ function applyAndRenderSort(sortBy, sortOrder) {
     $(newsItems).insertBefore($('footer'));
 
     updateUrlHash({sort: sortBy, order: sortOrder});
+
+    // Update UI active state
+    $('.sort-dropdown li').removeClass('active');
+    $('.sort-dropdown [data-sort="' + sortBy + '"]').parent().addClass('active');
 }
 
 function applyAndRenderFilter(topN) {
@@ -111,6 +115,11 @@ function applyAndRenderFilter(topN) {
         if ($(this).hasClass('ad')) return;
         $(this).toggle((parseInt($(this).data('points')) || 0) >= threshold);
     });
+
+    // Update UI active state
+    $('.filter-dropdown li').removeClass('active');
+    const filterVal = isNaN(topN) || topN === 0 ? 'all' : topN.toString();
+    $('.filter-dropdown [data-filter="' + filterVal + '"]').parent().addClass('active');
 }
 
 function setupSortHandlers() {
@@ -326,20 +335,10 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
 
     document.addEventListener('keydown', function(e) {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-            if (e.key === 'Escape' && e.target.id === 'search-input') {
-                if (e.target.value) {
-                    e.target.value = '';
-                    doSearch('');
-                } else {
-                    e.target.blur();
-                    if (document.getElementById('search-box')) {
-                        document.getElementById('search-box').classList.add('hidden');
-                        var toggle = document.getElementById('search-toggle');
-                        if (toggle) {
-                            toggle.setAttribute('aria-expanded', 'false');
-                            toggle.focus();
-                        }
-                    }
+            if (e.key === 'Escape') {
+                document.getElementById('search-input').blur();
+                if (document.getElementById('search-box')) {
+                    document.getElementById('search-box').classList.add('hidden');
                 }
             }
             return;
@@ -388,16 +387,7 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
     var searchBox = document.getElementById('search-box');
     var searchInput = document.getElementById('search-input');
     var searchClose = document.getElementById('search-close');
-    var searchClear = document.getElementById('search-clear');
     if (!searchToggle || !searchBox || !searchInput) return;
-
-    if (searchClear) {
-        searchClear.addEventListener('click', function() {
-            searchInput.value = '';
-            doSearch('');
-            searchInput.focus();
-        });
-    }
 
     searchToggle.addEventListener('click', function(e) {
         e.preventDefault();
@@ -429,16 +419,13 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
 
     function doSearch(query) {
         var articles = document.querySelectorAll('.post-item:not(.ad)');
-        var noResults = document.getElementById('search-no-results');
         if (!query) {
             articles.forEach(function(a) {
                 a.classList.remove('search-hidden', 'search-match');
             });
-            if (noResults) noResults.classList.add('hidden');
             return;
         }
         var lower = query.toLowerCase();
-        var matches = 0;
         articles.forEach(function(a) {
             var title = a.querySelector('.post-title a');
             var summary = a.querySelector('.summary-text');
@@ -452,10 +439,6 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
                         authorText.indexOf(lower) !== -1 || domainText.indexOf(lower) !== -1;
             a.classList.toggle('search-hidden', !match);
             a.classList.toggle('search-match', match);
-            if (match) matches++;
         });
-        if (noResults) {
-            noResults.classList.toggle('hidden', matches > 0);
-        }
     }
 })();
