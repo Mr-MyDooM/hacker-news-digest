@@ -60,9 +60,7 @@ func GetDailyNews(updatableDays int) (map[string][]*News, error) {
 
 			createdAt, _ := time.Parse(time.RFC3339, hit.CreatedAt)
 			if time.Since(createdAt) > time.Duration(updatableDays)*24*time.Hour {
-				// Algolia search_by_date returns hits in descending order of creation time.
-				// Once we hit a story older than our threshold, we can stop fetching more.
-				return byDate, nil
+				continue
 			}
 
 			newsURL := hit.URL
