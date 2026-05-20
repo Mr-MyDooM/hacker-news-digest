@@ -3,10 +3,10 @@ package extractor
 import (
 	"fmt"
 	"io"
-	"net"
+	"log"
 	"net/http"
+	"net/url"
 	"strings"
-	"syscall"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -14,53 +14,18 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-// SafeHTTPClient returns an http.Client that blocks access to private/local networks.
-func SafeHTTPClient(timeout time.Duration) *http.Client {
-	dialer := &net.Dialer{
-		Timeout:   timeout,
-		KeepAlive: 30 * time.Second,
-		Control: func(network, address string, c syscall.RawConn) error {
-			host, _, err := net.SplitHostPort(address)
-			if err != nil {
-				return err
-			}
-			ip := net.ParseIP(host)
-			if ip != nil && !isSafeIP(ip) {
-				return fmt.Errorf("connection to %s is blocked", host)
-			}
-			return nil
-		},
-	}
-
-	return &http.Client{
-		Timeout: timeout,
-		Transport: &http.Transport{
-			Proxy:                 http.ProxyFromEnvironment,
-			DialContext:           dialer.DialContext,
-			ForceAttemptHTTP2:     true,
-			MaxIdleConns:          100,
-			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-		},
-	}
-}
-
-func isSafeIP(ip net.IP) bool {
-	return !(ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsPrivate() || ip.IsUnspecified())
-}
-
 type ExtractResult struct {
 	Title       string
 	Content     string
 	Description string
 	Favicon     string
 	Image       string
+	Images      []string
 	SiteName    string
 }
 
 func Extract(url string, maxLength int) (*ExtractResult, error) {
-	client := SafeHTTPClient(30 * time.Second)
+	client := GetSafeClient(30 * time.Second)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
@@ -111,13 +76,30 @@ func Extract(url string, maxLength int) (*ExtractResult, error) {
 	result.SiteName = extractMeta(doc, "og:site_name")
 	result.Content = extractContent(doc, maxLength)
 
-	// Fallback: no og:image found, look for first suitable <img> in article body
-	if result.Image == "" {
-		result.Image = extractBodyImage(doc, url)
+	// Collect all image candidates: body images first (more relevant), then meta
+	bodyImgs := collectBodyImages(doc, url)
+	result.Images = append(result.Images, bodyImgs...)
+	if result.Image != "" {
+		result.Images = append(result.Images, result.Image)
+	}
+
+	// Pick the first available image candidate
+	if result.Image == "" && len(bodyImgs) > 0 {
+		result.Image = bodyImgs[0]
+	}
+
+	// Validate content quality: if text looks like noise (low alphabetic ratio),
+	// try Jina as an alternative source before giving up.
+	if !isValidContent(result.Content) {
+		log.Printf("Poor content quality for %s (alpha ratio %.2f), retrying via Jina", url, alphaRatio(result.Content))
+		if jinaResult, err := ExtractViaJina(url, maxLength); err == nil {
+			jinaResult.Image = result.Image
+			return jinaResult, nil
+		}
 	}
 
 	// When body content is empty (paywalled, login wall, etc.), try Jina reader as proxy.
-	if result.Content == "" && result.Description == "" {
+	if result.Content == "" {
 		if jinaResult, err := ExtractViaJina(url, maxLength); err == nil {
 			jinaResult.Image = result.Image // preserve og:image from original
 			return jinaResult, nil
@@ -170,67 +152,59 @@ func extractMetaImage(doc *goquery.Document, pageURL string) string {
 	return ""
 }
 
-func extractBodyImage(doc *goquery.Document, pageURL string) string {
+func collectBodyImages(doc *goquery.Document, pageURL string) []string {
 	skipKeywords := []string{"avatar", "spinner", "icon", "logo", "button", "banner", "thumb", "sprite", "loading", "placeholder", "pixel"}
-	candidate := ""
+	seen := make(map[string]bool)
+	var candidates []string
 
-	// Search image containers first (article, main)
-	containers := doc.Find("article, main, [role=main], .post-content, .entry-content, .article-body")
-	if containers.Length() > 0 {
-		containers.Find("img").Each(func(i int, sel *goquery.Selection) {
-			if candidate != "" {
-				return
-			}
-			src, exists := sel.Attr("src")
-			if !exists || src == "" || strings.HasPrefix(src, "data:") {
-				return
-			}
-			cls, _ := sel.Attr("class")
-			id, _ := sel.Attr("id")
-			alt, _ := sel.Attr("alt")
-			attrStr := cls + " " + id + " " + alt
-			lower := strings.ToLower(attrStr)
-			for _, kw := range skipKeywords {
-				if strings.Contains(lower, kw) {
-					return
-				}
-			}
-			candidate = resolveURL(pageURL, src)
-		})
+	addIfValid := func(src string) {
+		if src == "" || strings.HasPrefix(src, "data:") || seen[src] {
+			return
+		}
+		seen[src] = true
+		candidates = append(candidates, resolveURL(pageURL, src))
 	}
 
-	// Fallback: search full document for first suitable img
-	if candidate == "" {
-		doc.Find("img").Each(func(i int, sel *goquery.Selection) {
-			if candidate != "" {
+	// Preferred: images inside article/main containers
+	containers := doc.Find("article, main, [role=main], .post-content, .entry-content, .article-body, [class*=content], [id*=content]")
+	containers.Find("img").Each(func(i int, sel *goquery.Selection) {
+		src, _ := sel.Attr("src")
+		cls, _ := sel.Attr("class")
+		id, _ := sel.Attr("id")
+		alt, _ := sel.Attr("alt")
+		attrStr := strings.ToLower(cls + " " + id + " " + alt)
+		for _, kw := range skipKeywords {
+			if strings.Contains(attrStr, kw) {
 				return
 			}
-			src, exists := sel.Attr("src")
-			if !exists || src == "" || strings.HasPrefix(src, "data:") {
-				return
-			}
-			w, wex := sel.Attr("width")
-			h, hex := sel.Attr("height")
-			if wex && hex {
-				if isDimSmall(w, h) {
-					return
-				}
-			}
-			cls, _ := sel.Attr("class")
-			id, _ := sel.Attr("id")
-			alt, _ := sel.Attr("alt")
-			attrStr := cls + " " + id + " " + alt
-			lower := strings.ToLower(attrStr)
-			for _, kw := range skipKeywords {
-				if strings.Contains(lower, kw) {
-					return
-				}
-			}
-			candidate = resolveURL(pageURL, src)
-		})
-	}
+		}
+		addIfValid(src)
+	})
 
-	return candidate
+	// Fallback: all document images (skip small ones by HTML attrs)
+	doc.Find("img").Each(func(i int, sel *goquery.Selection) {
+		src, _ := sel.Attr("src")
+		if seen[resolveURL(pageURL, src)] {
+			return
+		}
+		w, wex := sel.Attr("width")
+		h, hex := sel.Attr("height")
+		if wex && hex && isDimSmall(w, h) {
+			return
+		}
+		cls, _ := sel.Attr("class")
+		id, _ := sel.Attr("id")
+		alt, _ := sel.Attr("alt")
+		attrStr := strings.ToLower(cls + " " + id + " " + alt)
+		for _, kw := range skipKeywords {
+			if strings.Contains(attrStr, kw) {
+				return
+			}
+		}
+		addIfValid(src)
+	})
+
+	return candidates
 }
 
 func isDimSmall(w, h string) bool {
@@ -270,6 +244,9 @@ func extractFavicon(doc *goquery.Document, pageURL string) string {
 }
 
 func resolveURL(base, href string) string {
+	if strings.HasPrefix(href, "http://") || strings.HasPrefix(href, "https://") {
+		return href
+	}
 	if strings.HasPrefix(href, "//") {
 		return "https:" + href
 	}
@@ -279,18 +256,23 @@ func resolveURL(base, href string) string {
 			return parts[0] + "//" + parts[2] + href
 		}
 	}
+	base = strings.TrimRight(base, "/")
 	return base + "/" + strings.TrimLeft(href, "/")
 }
 
 func extractContent(doc *goquery.Document, maxLength int) string {
+	// Remove non-content elements aggressively
 	doc.Find("script, style, nav, footer, header, iframe, form, noscript, svg, canvas, aside").Remove()
+	doc.Find("[class*=sidebar], [class*=comment], [class*=widget], [class*=meta], [class*=menu], [class*=nav-], [class*=footer], [id*=sidebar], [id*=comment], [id*=footer]").Remove()
+	doc.Find("[class*=related], [id*=related], [class*=recommend], [id*=recommend], [class*=suggestion], [id*=suggestion]").Remove()
+	doc.Find("[class*=discussion], [id*=discussion], [class*=thread], [id*=thread]").Remove()
 
 	article := doc.Find("article").First()
 	if article.Length() > 0 {
 		return cleanText(article.Text(), maxLength)
 	}
 
-	main := doc.Find("main, [role=main], #content, .content, .post-content, .entry-content, .article-body").First()
+	main := doc.Find("main, [role=main], #content, .content, .post-content, .entry-content, .article-body, #main-content, .post-body, .article-content, .story-body").First()
 	if main.Length() > 0 {
 		return cleanText(main.Text(), maxLength)
 	}
@@ -300,33 +282,140 @@ func extractContent(doc *goquery.Document, maxLength int) string {
 		return ""
 	}
 
+	// Score all child divs/sections recursively by text length, link density, and pattern matching
 	best := body
-	bestLen := 0
-	body.Children().Each(func(i int, sel *goquery.Selection) {
-		tag := goquery.NodeName(sel)
-		if tag == "div" || tag == "section" || tag == "article" {
-			text := sel.Text()
-			textLen := utf8.RuneCountInString(strings.TrimSpace(text))
-			linkDensity := linkDensity(sel)
-			if textLen > bestLen && linkDensity < 0.5 {
-				bestLen = textLen
-				best = sel
-			}
-		}
-	})
+	bestScore := 0.0
+	findBestContent(body, titleText(doc), &best, &bestScore)
 
-	if bestLen > 0 {
+	if bestScore > 0 {
 		return cleanText(best.Text(), maxLength)
 	}
 
-	doc.Find("p, h1, h2, h3, h4, h5, h6, li").Each(func(i int, sel *goquery.Selection) {
-		text := strings.TrimSpace(sel.Text())
-		if utf8.RuneCountInString(text) > 20 {
-			// append to result, we'll collect manually
-		}
-	})
-
 	return cleanText(body.Text(), maxLength)
+}
+
+func titleText(doc *goquery.Document) string {
+	return strings.ToLower(strings.TrimSpace(doc.Find("title").First().Text()))
+}
+
+// contentBoost returns a multiplier for elements with positive content class/id patterns.
+// Copy of Python's impact_factor logic (Readability-inspired).
+func contentBoost(child *goquery.Selection) float64 {
+	cls, _ := child.Attr("class")
+	id, _ := child.Attr("id")
+	attr := strings.ToLower(cls + " " + id)
+
+	positivePatterns := []string{"article", "content", "post", "main", "entry", "story", "text", "body", "page"}
+	negativePatterns := []string{"sidebar", "comment", "footer", "header", "nav", "menu", "widget", "ad-", "advertisement", "promo", "sponsor", "meta", "related", "recommend"}
+
+	for _, p := range positivePatterns {
+		if strings.Contains(attr, p) {
+			return 2.0
+		}
+	}
+	for _, p := range negativePatterns {
+		if strings.Contains(attr, p) {
+			return 0.2
+		}
+	}
+	return 1.0
+}
+
+func findBestContent(sel *goquery.Selection, title string, best **goquery.Selection, bestScore *float64) {
+	sel.Children().Each(func(i int, child *goquery.Selection) {
+		tag := goquery.NodeName(child)
+		if tag != "div" && tag != "section" && tag != "article" && tag != "main" {
+			findBestContent(child, title, best, bestScore)
+			return
+		}
+		text := strings.TrimSpace(child.Text())
+		textLen := utf8.RuneCountInString(text)
+		ld := linkDensity(child)
+		if textLen < 50 || ld >= 0.5 {
+			findBestContent(child, title, best, bestScore)
+			return
+		}
+		boost := contentBoost(child)
+
+		// LCS title match boost: Python gives high scores to headers matching the page title
+		titleBoost := 1.0
+		if tag == "h1" || tag == "h2" || tag == "h3" || tag == "h4" {
+			childText := strings.ToLower(text)
+			if lcsRatio(title, childText) > 0.85 {
+				titleBoost = 3.0
+			}
+		}
+
+		// Alphabetic ratio boost: prefer prose, penalize only when very noisy
+		alphaBoost := alphaRatio(text)
+		if alphaBoost < 0.3 {
+			alphaBoost = 0.2 // heavily penalize non-prose (code, gibberish)
+		} else if alphaBoost < 0.5 {
+			alphaBoost = 0.7 // mildly penalize mixed content
+		}
+
+		score := float64(textLen) * boost * titleBoost * alphaBoost / (ld + 0.1)
+		if score > *bestScore {
+			*bestScore = score
+			*best = child
+		}
+		findBestContent(child, title, best, bestScore)
+	})
+}
+
+// lcsRatio computes the ratio of the longest common subsequence length to the longer string length.
+func lcsRatio(a, b string) float64 {
+	if len(a) == 0 && len(b) == 0 {
+		return 1.0
+	}
+	m, n := len(a), len(b)
+	// Use small table if both strings are short, otherwise fast approximation
+	if m > 200 || n > 200 {
+		// Approximate: count common words
+		wordsA := strings.Fields(a)
+		wordsB := strings.Fields(b)
+		if len(wordsA) == 0 || len(wordsB) == 0 {
+			return 0
+		}
+		setB := make(map[string]bool, len(wordsB))
+		for _, w := range wordsB {
+			setB[w] = true
+		}
+		common := 0
+		for _, w := range wordsA {
+			if setB[w] {
+				common++
+			}
+		}
+		return float64(common) / float64(max(len(wordsA), len(wordsB)))
+	}
+	// Full LCS for short strings
+	dp := make([][]int, m+1)
+	for i := range dp {
+		dp[i] = make([]int, n+1)
+	}
+	for i := 1; i <= m; i++ {
+		for j := 1; j <= n; j++ {
+			if a[i-1] == b[j-1] {
+				dp[i][j] = dp[i-1][j-1] + 1
+			} else {
+				dp[i][j] = max(dp[i-1][j], dp[i][j-1])
+			}
+		}
+	}
+	lcs := dp[m][n]
+	longer := m
+	if n > longer {
+		longer = n
+	}
+	return float64(lcs) / float64(longer)
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func linkDensity(sel *goquery.Selection) float64 {
@@ -342,6 +431,73 @@ func linkDensity(sel *goquery.Selection) float64 {
 	return float64(len(linkText)) / float64(len(text))
 }
 
+// isValidContent checks that extracted text looks like real article content, not noise.
+func isValidContent(text string) bool {
+	if len(text) < 200 {
+		return false
+	}
+	return alphaRatio(text) >= 0.50
+}
+
+// alphaRatio returns the fraction of non-space characters that are alphabetic.
+func alphaRatio(text string) float64 {
+	if len(text) == 0 {
+		return 0
+	}
+	alpha := 0
+	total := 0
+	for _, r := range text {
+		if r == ' ' || r == '\n' || r == '\t' || r == '\r' {
+			continue
+		}
+		total++
+		if unicode.IsLetter(r) {
+			alpha++
+		}
+	}
+	if total == 0 {
+		return 0
+	}
+	return float64(alpha) / float64(total)
+}
+
+// isGibberishLine detects lines that are unlikely to be real prose:
+// too many non-alphanumeric characters, code fragments, or noise.
+func isGibberishLine(line string) bool {
+	runes := []rune(line)
+	if len(runes) < 5 {
+		return true
+	}
+	alpha := 0
+	special := 0
+	for _, r := range runes {
+		if unicode.IsLetter(r) {
+			alpha++
+		} else if !unicode.IsSpace(r) && !unicode.IsDigit(r) && !unicode.IsPunct(r) {
+			special++
+		}
+	}
+	// If >30% of chars are non-standard special chars, likely noise
+	if special > 0 && float64(special)/float64(len(runes)) > 0.30 {
+		return true
+	}
+	// If <40% alphabetic, too many symbols/code
+	if float64(alpha)/float64(len(runes)) < 0.40 {
+		return true
+	}
+	// Code-like lines: too many brackets/semicolons
+	codeChars := 0
+	for _, r := range runes {
+		if r == '{' || r == '}' || r == '(' || r == ')' || r == ';' || r == '=' || r == '<' || r == '>' {
+			codeChars++
+		}
+	}
+	if codeChars > 0 && float64(codeChars)/float64(len(runes)) > 0.10 {
+		return true
+	}
+	return false
+}
+
 func cleanText(text string, maxLength int) string {
 	text = strings.ReplaceAll(text, "\t", " ")
 	text = strings.ReplaceAll(text, "\r", "")
@@ -353,8 +509,28 @@ func cleanText(text string, maxLength int) string {
 		if line == "" {
 			continue
 		}
+		// Skip very short lines (noise, navigation, metadata)
 		wordCount := countWords(line)
-		if wordCount < 3 {
+		if wordCount < 10 {
+			continue
+		}
+		// Skip gibberish and code-like lines
+		if isGibberishLine(line) {
+			continue
+		}
+		// Skip lines that look like metadata (dates, author, share, tags)
+		skipMeta := []string{"published", "updated", "written by", "posted by", "by ", "share this",
+			"tweet", "facebook", "linkedin", "tags:", "category:", "subscribe", "comments",
+			"reply", "leave a", "©", "all rights reserved", "privacy", "cookie"}
+		lower := strings.ToLower(line)
+		isMeta := false
+		for _, m := range skipMeta {
+			if strings.HasPrefix(lower, m) {
+				isMeta = true
+				break
+			}
+		}
+		if isMeta && wordCount < 20 {
 			continue
 		}
 		cleaned = append(cleaned, line)
@@ -411,9 +587,9 @@ func countWords(s string) int {
 
 // ExtractViaJina uses the Jina reader proxy to get readable content from pages
 // that block direct scraping (paywalls, login walls, 403s).
-func ExtractViaJina(url string, maxLength int) (*ExtractResult, error) {
-	jinaURL := "https://r.jina.ai/" + url
-	client := SafeHTTPClient(30 * time.Second)
+func ExtractViaJina(targetURL string, maxLength int) (*ExtractResult, error) {
+	jinaURL := "https://r.jina.ai/" + url.PathEscape(targetURL)
+	client := GetSafeClient(30 * time.Second)
 	req, err := http.NewRequest("GET", jinaURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("jina request: %w", err)

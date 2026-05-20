@@ -45,11 +45,18 @@ func GenDaily(updatableDays int) {
 		return
 	}
 
+	// Performance: Aggregate all items across all dates into a single slice
+	// to maximize concurrency semaphore utilization during content fetching.
+	var allItems []*hn.News
+	for _, items := range dailyItems {
+		allItems = append(allItems, items...)
+	}
+	pullContentConcurrent(allItems)
+
 	for dateKey, items := range dailyItems {
 		for i, item := range items {
 			item.Rank = i + 1
 		}
-		pullContentConcurrent(items)
 		path := filepath.Join("daily", dateKey, "index.html")
 		genPage(items, path)
 	}
@@ -58,6 +65,9 @@ func GenDaily(updatableDays int) {
 // pullContentConcurrent fetches content and generates summaries for a list of news items concurrently.
 // It uses a semaphore to limit the number of concurrent requests to avoid overwhelming external sites.
 func pullContentConcurrent(newsList []*hn.News) {
+	// Performance: Prefetch summaries from DB to avoid concurrent DB contention and N+1 queries.
+	hn.PrefetchSummaries(newsList)
+
 	const maxConcurrent = 10
 	sem := make(chan struct{}, maxConcurrent)
 	var wg sync.WaitGroup

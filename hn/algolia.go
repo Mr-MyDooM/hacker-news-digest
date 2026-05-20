@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"time"
+
+	"github.com/mj/hacker-news-digest/extractor"
 )
 
 const algoliaURL = "https://hn.algolia.com/api/v1/search_by_date"
@@ -27,12 +28,16 @@ type algoliaHit struct {
 }
 
 func GetDailyNews(updatableDays int) (map[string][]*News, error) {
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := extractor.GetSafeClient(30 * time.Second)
 	seen := make(map[string]bool)
 	byDate := make(map[string][]*News)
 
+	// Performance: Use server-side filtering to reduce data transfer and processing.
+	threshold := time.Now().Add(-time.Duration(updatableDays) * 24 * time.Hour).Unix()
+
 	for page := 0; page < 50; page++ {
-		u := fmt.Sprintf("%s?tags=front_page&hitsPerPage=200&page=%d", algoliaURL, page)
+		// numericFilters uses URL-encoded '>' as '%3E' to prevent 400 errors.
+		u := fmt.Sprintf("%s?tags=front_page&hitsPerPage=200&page=%d&numericFilters=created_at_i%%3E%d", algoliaURL, page, threshold)
 		resp, err := client.Get(u)
 		if err != nil {
 			return nil, fmt.Errorf("algolia page %d: %w", page, err)
@@ -52,6 +57,7 @@ func GetDailyNews(updatableDays int) (map[string][]*News, error) {
 			break
 		}
 
+		hitProcessed := false
 		for _, hit := range ar.Hits {
 			if seen[hit.ObjectID] {
 				continue
@@ -60,8 +66,11 @@ func GetDailyNews(updatableDays int) (map[string][]*News, error) {
 
 			createdAt, _ := time.Parse(time.RFC3339, hit.CreatedAt)
 			if time.Since(createdAt) > time.Duration(updatableDays)*24*time.Hour {
-				continue
+				// Performance: early termination. search_by_date is strictly descending.
+				// If we hit an item older than the threshold, we can stop entirely.
+				return byDate, nil
 			}
+			hitProcessed = true
 
 			newsURL := hit.URL
 			if newsURL == "" {
@@ -84,6 +93,10 @@ func GetDailyNews(updatableDays int) (map[string][]*News, error) {
 
 			dateKey := createdAt.Format("2006-01-02")
 			byDate[dateKey] = append(byDate[dateKey], story)
+		}
+
+		if !hitProcessed {
+			break
 		}
 	}
 

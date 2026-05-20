@@ -9,6 +9,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/mj/hacker-news-digest/config"
+	"github.com/mj/hacker-news-digest/extractor"
 )
 
 type Parser struct {
@@ -17,7 +18,7 @@ type Parser struct {
 
 func NewParser() *Parser {
 	return &Parser{
-		client: &http.Client{Timeout: 30 * time.Second},
+		client: extractor.GetSafeClient(30 * time.Second),
 	}
 }
 

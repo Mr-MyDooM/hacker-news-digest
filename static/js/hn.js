@@ -125,6 +125,16 @@ function setupSortHandlers() {
     });
 }
 
+function setupArchiveHandlers() {
+    $('#more-archive').click(function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $('.archive-item').removeClass('hidden');
+        $('#archive-divider').remove();
+        $(this).parent().remove();
+    });
+}
+
 function setupFilterHandlers() {
     $('.filter-dropdown [data-filter]').click(function() {
         const raw = $(this).data('filter');
@@ -144,6 +154,7 @@ function PreviewImage(src) {
 $(function() {
     setupSortHandlers();
     setupFilterHandlers();
+    setupArchiveHandlers();
 
     // Restore state from URL hash
     const urlParams = new URLSearchParams(window.location.hash.substring(1));
@@ -240,7 +251,12 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
     document.querySelectorAll('.summit-time[data-submitted]').forEach(function(el) {
         var rel = timeAgo(el.getAttribute('data-submitted'));
         if (rel) {
-            el.textContent = rel;
+            var textNode = el.querySelector('.time-ago-text');
+            if (textNode) {
+                textNode.textContent = rel;
+            } else {
+                el.textContent = rel;
+            }
         }
     });
     var lu = document.querySelector('.last-updated[data-updated]');
@@ -400,6 +416,15 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
         searchToggle.focus();
     });
 
+    var searchClearBtn = document.getElementById('search-clear-btn');
+    if (searchClearBtn) {
+        searchClearBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            doSearch('');
+            searchInput.focus();
+        });
+    }
+
     var searchTimer;
     searchInput.addEventListener('input', function() {
         clearTimeout(searchTimer);
@@ -410,13 +435,16 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
 
     function doSearch(query) {
         var articles = document.querySelectorAll('.post-item:not(.ad)');
+        var noResults = document.getElementById('search-no-results');
         if (!query) {
             articles.forEach(function(a) {
                 a.classList.remove('search-hidden', 'search-match');
             });
+            if (noResults) noResults.classList.add('hidden');
             return;
         }
         var lower = query.toLowerCase();
+        var matchCount = 0;
         articles.forEach(function(a) {
             var title = a.querySelector('.post-title a');
             var summary = a.querySelector('.summary-text');
@@ -430,6 +458,10 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
                         authorText.indexOf(lower) !== -1 || domainText.indexOf(lower) !== -1;
             a.classList.toggle('search-hidden', !match);
             a.classList.toggle('search-match', match);
+            if (match) matchCount++;
         });
+        if (noResults) {
+            noResults.classList.toggle('hidden', matchCount > 0);
+        }
     }
 })();

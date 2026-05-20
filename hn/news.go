@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"strings"
+	"unicode"
 
 	"github.com/mj/hacker-news-digest/config"
 	"github.com/mj/hacker-news-digest/db"
@@ -46,6 +47,31 @@ func Init(c *config.Config) {
 	}
 }
 
+func PrefetchSummaries(newsList []*News) {
+	if len(newsList) == 0 {
+		return
+	}
+
+	urls := make([]string, 0, len(newsList))
+	for _, n := range newsList {
+		if !n.IsHiringJob() && n.URL != "" {
+			urls = append(urls, n.URL)
+		}
+	}
+
+	summaries, err := db.GetSummaries(urls)
+	if err != nil {
+		log.Printf("Batch cache error: %v", err)
+		return
+	}
+
+	for _, n := range newsList {
+		if s, ok := summaries[n.URL]; ok {
+			n.Cache = s
+		}
+	}
+}
+
 func (n *News) PullContent() {
 	if n.IsHiringJob() {
 		n.Content = n.Title
@@ -55,15 +81,21 @@ func (n *News) PullContent() {
 	}
 
 	// Optimization: Check cache FIRST to avoid expensive network I/O
-	cached, err := db.GetSummary(n.URL)
-	if err != nil {
-		log.Printf("Cache error for %s: %v", n.URL, err)
+	cached := n.Cache
+	if cached == nil {
+		var err error
+		cached, err = db.GetSummary(n.URL)
+		if err != nil {
+			log.Printf("Cache error for %s: %v", n.URL, err)
+		}
+		n.Cache = cached
 	}
-	n.Cache = cached
 
 	if cached != nil && cached.Summary != "" {
-		// If cached model is final, or score doesn't warrant an LLM upgrade, return early
-		if cached.Model.IsFinal() || n.Score < cfg.OpenRouterScore {
+		// If cached summary is garbage (hallucinated, full of noise), force re-extraction
+		if isGarbageSummary(cached.Summary) {
+			log.Printf("Cache hit for %s but summary is garbage, re-extracting", n.URL)
+		} else if cached.Model.IsFinal() || n.Score < cfg.OpenRouterScore {
 			n.Summary = cached.Summary
 			n.SummarizedBy = cached.Model
 			// Restore cached image if we don't already have one
@@ -75,14 +107,15 @@ func (n *News) PullContent() {
 			}
 			log.Printf("Cache hit for %s (skipping fetch)", n.URL)
 			return
+		} else {
+			log.Printf("Cache hit for %s, but model %s needs LLM upgrade", n.URL, cached.Model)
 		}
-		log.Printf("Cache hit for %s, but model %s needs LLM upgrade", n.URL, cached.Model)
 	}
 
-	result, err := extractor.Extract(n.URL, cfg.SummarySize*3)
+	result, err := extractor.Extract(n.URL, 65536)
 	if err != nil {
-		log.Printf("Failed to fetch %s: %v", n.URL, err)
-		n.Summary = ""
+		log.Printf("Failed to fetch %s: %v, using title as summary", n.URL, err)
+		n.Summary = n.Title
 		n.SummarizedBy = db.ModelPrefix
 		return
 	}
@@ -97,7 +130,7 @@ func (n *News) PullContent() {
 
 	if isBlockedContent(n.Content) {
 		log.Printf("Blocked content for %s, retrying via Jina", n.URL)
-		if jinaResult, jinaErr := extractor.ExtractViaJina(n.URL, cfg.SummarySize*3); jinaErr == nil && jinaResult.Content != "" {
+		if jinaResult, jinaErr := extractor.ExtractViaJina(n.URL, 65536); jinaErr == nil && jinaResult.Content != "" {
 			n.Content = jinaResult.Content
 			log.Printf("Jina succeeded for %s", n.URL)
 		} else {
@@ -110,12 +143,19 @@ func (n *News) PullContent() {
 		}
 	}
 
-	// Fetch og:image when available
-	if result.Image != "" && cfg.ImageDir != "" && n.Image == nil {
-		img, err := extractor.FetchImage(result.Image, n.URL, cfg.ImageDir)
-		if err == nil {
-			n.Image = img
-			saveImageToCache(n)
+	// Fetch image from candidates (meta image first, then body images)
+	if cfg.ImageDir != "" && n.Image == nil {
+		for _, imgURL := range result.Images {
+			if imgURL == "" {
+				continue
+			}
+			img, err := extractor.FetchImage(imgURL, n.URL, cfg.ImageDir)
+			if err == nil {
+				n.Image = img
+				saveImageToCache(n)
+				break
+			}
+			log.Printf("Failed to fetch image candidate %s for %s: %v", imgURL, n.URL, err)
 		}
 	}
 
@@ -160,11 +200,76 @@ func isBlockedContent(content string) bool {
 	return false
 }
 
+// isGarbageSummary detects cached summaries that are LLM hallucinations or noise.
+// These should force re-extraction rather than being treated as final.
+func isGarbageSummary(summary string) bool {
+	if len(summary) < 20 {
+		return false
+	}
+	// Very long summaries (>500 chars) are suspicious — LLM summaries should be concise
+	if len(summary) > 500 {
+		return true
+	}
+	// Check for repeated words: "word" repeated 10+ times in a short span
+	words := strings.Fields(summary)
+	if len(words) > 0 {
+		wordFreq := make(map[string]int, len(words))
+		for _, w := range words {
+			w = strings.Trim(w, ".,!?;:'\"()[]{}")
+			if len(w) > 1 {
+				wordFreq[w]++
+			}
+		}
+		// If a single word appears >20% of all words, it's likely hallucinated repetition
+		for _, count := range wordFreq {
+			if len(words) > 20 && count > len(words)/5 {
+				return true
+			}
+		}
+	}
+	// Low unique word ratio (repetitive garbage)
+	unique := make(map[string]bool)
+	for _, w := range words {
+		unique[strings.ToLower(w)] = true
+	}
+	if len(words) > 30 && float64(len(unique))/float64(len(words)) < 0.5 {
+		return true
+	}
+	// Low alphabetic ratio — too many symbols/noise characters
+	alpha := 0
+	total := 0
+	for _, r := range summary {
+		if r == ' ' || r == '\n' {
+			continue
+		}
+		total++
+		if unicode.IsLetter(r) {
+			alpha++
+		}
+	}
+	if total > 0 && float64(alpha)/float64(total) < 0.70 {
+		return true
+	}
+	// Code-like artifacts in summary (never valid in a natural language summary)
+	codePatterns := []string{"//", "{", "}", "=>", "->", "|", "!!", "??", ").", ");", "= "}
+	matches := 0
+	for _, p := range codePatterns {
+		if strings.Contains(summary, p) {
+			matches++
+		}
+	}
+	if matches >= 3 {
+		return true
+	}
+	return false
+}
+
 func (n *News) Summarize(content string) {
 	// Short content doesn't need LLM summarization.
 	if len([]rune(content)) <= cfg.SummarySize {
 		n.Summary = content
 		n.SummarizedBy = db.ModelPrefix
+		db.PutSummary(&db.Summary{URL: n.URL, Summary: content, Model: db.ModelPrefix})
 		return
 	}
 
@@ -245,10 +350,18 @@ func (n *News) Summarize(content string) {
 		model = db.ModelPrefix
 	}
 
+	// Safety net: if LLM summary is still garbage (happens for stubborn pages),
+	// fall back to prefix to avoid caching trash.
+	if model != db.ModelPrefix && isGarbageSummary(summary) {
+		log.Printf("LLM summary for %s is garbage, falling back to prefix", n.URL)
+		summary = prefixSummary(content, cfg.SummarySize)
+		model = db.ModelPrefix
+	}
+
 	n.Summary = summary
 	n.SummarizedBy = model
 
-	if model != db.ModelPrefix && summary != "" {
+	if summary != "" {
 		entry := &db.Summary{
 			URL:     n.URL,
 			Summary: summary,
