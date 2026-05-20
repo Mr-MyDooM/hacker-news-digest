@@ -164,6 +164,8 @@ func RenderFeed(newsList []*hn.News, siteURL string) string {
 		}
 
 		content := imgTag + news.Summary + summaryLink + commentsLink
+		// Escape CDATA closing sequence to prevent feed injection
+		content = strings.ReplaceAll(content, "]]>", "]]&gt;")
 
 		b.WriteString(fmt.Sprintf("  <entry>\n"))
 		b.WriteString(fmt.Sprintf("    <title>%s</title>\n", escapeXML(news.Title)))
@@ -186,6 +188,7 @@ func escapeXML(s string) string {
 	s = strings.ReplaceAll(s, "<", "&lt;")
 	s = strings.ReplaceAll(s, ">", "&gt;")
 	s = strings.ReplaceAll(s, "\"", "&quot;")
+	s = strings.ReplaceAll(s, "'", "&apos;")
 	return s
 }
 
