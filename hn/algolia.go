@@ -31,13 +31,8 @@ func GetDailyNews(updatableDays int) (map[string][]*News, error) {
 	seen := make(map[string]bool)
 	byDate := make(map[string][]*News)
 
-	// Performance Optimization: Use numericFilters to offload date filtering to Algolia
-	// and terminate early when hits exceed the updatableDays threshold.
-	thresholdTime := time.Now().Add(-time.Duration(updatableDays) * 24 * time.Hour)
-	thresholdUnix := thresholdTime.Unix()
-
 	for page := 0; page < 50; page++ {
-		u := fmt.Sprintf("%s?tags=front_page&hitsPerPage=200&page=%d&numericFilters=created_at_i>%d", algoliaURL, page, thresholdUnix)
+		u := fmt.Sprintf("%s?tags=front_page&hitsPerPage=200&page=%d", algoliaURL, page)
 		resp, err := client.Get(u)
 		if err != nil {
 			return nil, fmt.Errorf("algolia page %d: %w", page, err)
@@ -64,10 +59,8 @@ func GetDailyNews(updatableDays int) (map[string][]*News, error) {
 			seen[hit.ObjectID] = true
 
 			createdAt, _ := time.Parse(time.RFC3339, hit.CreatedAt)
-			if createdAt.Before(thresholdTime) {
-				// Since search_by_date is chronological (descending), we can stop
-				// as soon as we hit a story older than our threshold.
-				return byDate, nil
+			if time.Since(createdAt) > time.Duration(updatableDays)*24*time.Hour {
+				continue
 			}
 
 			newsURL := hit.URL

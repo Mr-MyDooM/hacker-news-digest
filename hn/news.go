@@ -54,12 +54,17 @@ func (n *News) PullContent() {
 		return
 	}
 
-	// Optimization: Check cache FIRST to avoid expensive network I/O
-	cached, err := db.GetSummary(n.URL)
-	if err != nil {
-		log.Printf("Cache error for %s: %v", n.URL, err)
+	// Optimization: Check cache FIRST to avoid expensive network I/O.
+	// n.Cache may already be pre-populated by a batch lookup in pullContentConcurrent.
+	cached := n.Cache
+	if cached == nil {
+		var err error
+		cached, err = db.GetSummary(n.URL)
+		if err != nil {
+			log.Printf("Cache error for %s: %v", n.URL, err)
+		}
+		n.Cache = cached
 	}
-	n.Cache = cached
 
 	if cached != nil && cached.Summary != "" {
 		// If cached model is final, or score doesn't warrant an LLM upgrade, return early

@@ -57,3 +57,57 @@ func FilterURLs(urls []string) (map[string]bool, error) {
 	}
 	return found, nil
 }
+
+// GetSummariesBatch fetches multiple summaries in a single query to avoid N+1 database calls.
+func GetSummariesBatch(urls []string) (map[string]*Summary, error) {
+	if len(urls) == 0 {
+		return nil, nil
+	}
+
+	results := make(map[string]*Summary)
+	// SQLite has a limit on the number of variables in a single query (default 999).
+	// We'll process in chunks of 500 to be safe.
+	for i := 0; i < len(urls); i += 500 {
+		end := i + 500
+		if end > len(urls) {
+			end = len(urls)
+		}
+		chunk := urls[i:end]
+
+		query := `SELECT url, summary, model, birth, access, favicon, image_name, image_json FROM summary WHERE url IN (`
+		args := make([]interface{}, len(chunk))
+		for j, url := range chunk {
+			if j > 0 {
+				query += ","
+			}
+			query += "?"
+			args[j] = url
+		}
+		query += ")"
+
+		rows, err := DB.Query(query, args...)
+		if err != nil {
+			return nil, fmt.Errorf("batch query: %w", err)
+		}
+
+		for rows.Next() {
+			s := &Summary{}
+			var birth, access string
+			err := rows.Scan(&s.URL, &s.Summary, &s.Model, &birth, &access, &s.Favicon, &s.ImageName, &s.ImageJSON)
+			if err != nil {
+				rows.Close()
+				return nil, fmt.Errorf("scan summary: %w", err)
+			}
+			s.Birth, _ = time.Parse("2006-01-02 15:04:05", birth)
+			s.Access, _ = time.Parse("2006-01-02 15:04:05", access)
+			results[s.URL] = s
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("rows err: %w", err)
+		}
+		rows.Close()
+	}
+
+	return results, nil
+}

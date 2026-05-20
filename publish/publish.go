@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/mj/hacker-news-digest/config"
+	"github.com/mj/hacker-news-digest/db"
 	"github.com/mj/hacker-news-digest/hn"
 	"github.com/mj/hacker-news-digest/template"
 )
@@ -61,6 +62,17 @@ func pullContentConcurrent(newsList []*hn.News) {
 	const maxConcurrent = 10
 	sem := make(chan struct{}, maxConcurrent)
 	var wg sync.WaitGroup
+
+	// Optimization: Batch lookup existing summaries to avoid N+1 database queries during PullContent.
+	urls := make([]string, len(newsList))
+	for i, n := range newsList {
+		urls[i] = n.URL
+	}
+	if caches, err := db.GetSummariesBatch(urls); err == nil {
+		for _, n := range newsList {
+			n.Cache = caches[n.URL]
+		}
+	}
 
 	for _, news := range newsList {
 		wg.Add(1)
