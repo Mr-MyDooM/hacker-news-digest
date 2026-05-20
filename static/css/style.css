@@ -262,6 +262,8 @@ body::before {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
     padding: 0.4rem;
     min-width: 140px;
+    max-height: 400px;
+    overflow-y: auto;
 }
 
 .dropdown-menu > li > a {
@@ -625,6 +627,9 @@ body::before {
     color: var(--text-dim);
     opacity: 0.6;
 }
+
+.hidden { display: none !important; }
+
 /* =============================================
    SEARCH EMPTY STATE
    ============================================= */
