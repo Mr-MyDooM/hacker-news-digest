@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"io"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mj/hacker-news-digest/config"
@@ -28,8 +29,13 @@ type PageData struct {
 	DisableTranslation bool
 }
 
-func Render(data *PageData) (string, error) {
-	funcMap := template.FuncMap{
+var (
+	templates *template.Template
+	tmplOnce  sync.Once
+	tmplErr   error
+
+	// Performance: Define funcMap at package level to avoid redundant allocations on every render.
+	funcMap = template.FuncMap{
 		"slug": func(n *hn.News) string {
 			return n.Slug()
 		},
@@ -121,14 +127,20 @@ func Render(data *PageData) (string, error) {
 			return trimmed
 		},
 	}
+)
 
-	tmpl, err := template.New("base.gohtml").Funcs(funcMap).ParseFS(templateFS, "*.gohtml")
-	if err != nil {
-		return "", fmt.Errorf("parse templates: %w", err)
+// Render renders a page using pre-parsed templates for better performance.
+func Render(data *PageData) (string, error) {
+	// Performance: Pre-parse templates once to avoid redundant filesystem I/O and parsing.
+	tmplOnce.Do(func() {
+		templates, tmplErr = template.New("base.gohtml").Funcs(funcMap).ParseFS(templateFS, "*.gohtml")
+	})
+	if tmplErr != nil {
+		return "", fmt.Errorf("parse templates: %w", tmplErr)
 	}
 
 	var buf strings.Builder
-	if err := tmpl.ExecuteTemplate(&buf, "base.gohtml", data); err != nil {
+	if err := templates.ExecuteTemplate(&buf, "base.gohtml", data); err != nil {
 		return "", fmt.Errorf("execute template: %w", err)
 	}
 
@@ -179,13 +191,17 @@ func RenderFeed(newsList []*hn.News, siteURL string) string {
 	return b.String()
 }
 
+var xmlReplacer = strings.NewReplacer(
+	"&", "&amp;",
+	"<", "&lt;",
+	">", "&gt;",
+	"\"", "&quot;",
+	"'", "&apos;",
+)
+
+// Performance: Use a strings.Replacer for XML escaping to reduce allocations and improve speed.
 func escapeXML(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	s = strings.ReplaceAll(s, "\"", "&quot;")
-	s = strings.ReplaceAll(s, "'", "&apos;")
-	return s
+	return xmlReplacer.Replace(s)
 }
 
 type writeWrapper struct {
