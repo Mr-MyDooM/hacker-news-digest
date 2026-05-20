@@ -641,15 +641,6 @@ body::before {
 .post-item.search-hidden { display: none; }
 .post-item.search-match { border-left: 2px solid var(--neon); padding-left: 1rem; }
 
-#search-no-results {
-    padding: 3rem 1rem;
-    color: var(--text-dim);
-}
-#search-no-results p {
-    font-size: 1.1rem;
-    margin-bottom: 1rem;
-}
-
 @media (max-width: 768px) {
     #search-box { padding: 8px 10px; }
     #search-input { max-width: 100%; font-size: 0.9rem; }
