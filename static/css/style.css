@@ -858,3 +858,27 @@ body::before {
     outline-offset: 2px;
     border-radius: 2px;
 }
+
+/* =============================================
+   SKIP LINK
+   ============================================= */
+.skip-link {
+    position: absolute;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--neon);
+    color: white !important;
+    padding: 10px 20px;
+    z-index: 10001;
+    border-radius: 0 0 8px 8px;
+    font-weight: 600;
+    text-decoration: none !important;
+    transition: top 0.2s;
+}
+
+.skip-link:focus {
+    top: 0;
+    outline: none;
+    box-shadow: 0 0 20px var(--neon-glow);
+}

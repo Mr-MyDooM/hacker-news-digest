@@ -75,6 +75,7 @@
     <meta name="twitter:description" content="AI-powered summaries of top Hacker News stories">
 </head>
 <body>
+<a href="#main-content" class="skip-link">Skip to main content</a>
 <div class="scanlines"></div>
 <div class="container">
     <nav class="navbar navbar-default navbar-fixed-top" role="navigation">
@@ -123,12 +124,12 @@
                 </li>
                 <li>
                     <button id="search-toggle" title="Search" aria-label="Search" aria-expanded="false" aria-controls="search-box">
-                        <i class="fa fa-search"></i>
+                        <i class="fa fa-search" aria-hidden="true"></i>
                     </button>
                 </li>
                 <li>
                     <button id="theme-toggle" title="Toggle theme" aria-label="Toggle theme">
-                        <i class="fa fa-moon-o"></i>
+                        <i class="fa fa-moon-o" aria-hidden="true"></i>
                     </button>
                 </li>
             </ul>
@@ -139,6 +140,7 @@
         </div>
     </nav>
 
+    <main id="main-content">
     {{range $i, $news := .NewsList}}
     {{if and (not $.DisableAds) $.AdsenseID (gt $i 0) (eq (mod $i 4) 0)}}
     <div class="post-item ad-unit">
@@ -162,25 +164,27 @@
         <div class="post-meta">
             <span class="label label-primary score">{{$news.Score}}</span>
             <span class="author-link">
-                <i class="fa fa-user"></i>
+                <i class="fa fa-user" aria-hidden="true"></i>
                 <a href="https://news.ycombinator.com/user?id={{$news.Author}}">{{$news.Author}}</a>
             </span>
-            <span class="summit-time" data-submitted="{{$news.SubmitTime.UTC.Format "2006-01-02T15:04:05Z"}}" title="{{$news.SubmitTime.Format "02 Jan 2006 15:04"}} IST"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> <span class="time-ago-text">{{timeAgo $news.SubmitTime}}</span></span>
+            <span class="summit-time" data-submitted="{{$news.SubmitTime.UTC.Format "2006-01-02T15:04:05Z"}}" title="{{$news.SubmitTime.Format "02 Jan 2006 15:04"}} IST"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> <span class="time-ago-text">{{timeAgo $news.SubmitTime}}</span></span>
             <span class="host">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                <img src="https://www.google.com/s2/favicons?domain={{domain $news.URL}}" width="16" height="16" alt="favicon"
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                <img src="https://www.google.com/s2/favicons?domain={{domain $news.URL}}" width="16" height="16" alt=""
                      onerror="favicon_fall_back(this);">
                 {{domain $news.URL}}
             </span>
-            {{if $news.Summary}}<span class="label label-info summary-model"><i class="fa fa-ellipsis-h"></i> {{$news.SummarizedBy}}</span>{{end}}
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> <span class="reading-time" data-slug="{{$news.Slug}}"></span>
+            {{if $news.Summary}}<span class="label label-info summary-model"><i class="fa fa-ellipsis-h" aria-hidden="true"></i> {{$news.SummarizedBy}}</span>{{end}}
+            <span class="reading-time-container hidden">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> <span class="reading-time" data-slug="{{$news.Slug}}"></span>
+            </span>
             <button class="share-icon" title="Share permalink" data-slug="{{$news.Slug}}" aria-label="Share permalink">
-                <i class="fa fa-share-alt"></i>
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
             </button>
             {{if $news.CommentURL}}
             <span class="comment">
                 <a href="{{$news.CommentURL}}" target="_blank" rel="noopener noreferrer">
-                    <i class="fa fa-comment"></i> {{$news.CommentCount}}
+                    <i class="fa fa-comment" aria-hidden="true"></i> {{$news.CommentCount}}
                 </a>
             </span>
             {{end}}
@@ -209,17 +213,18 @@
 
     <div id="search-no-results" class="hidden" role="status" aria-live="polite">
         <div class="no-results-content">
-            <i class="fa fa-search fa-3x"></i>
+            <i class="fa fa-search fa-3x" aria-hidden="true"></i>
             <h3>No stories match your search</h3>
             <p>Try different keywords or clear the search to see all stories.</p>
             <button id="search-clear-btn" class="btn-neon">Clear search</button>
         </div>
     </div>
+    </main>
 
     <footer class="site-footer">
         <div class="row">
             <div class="col-sm-4">
-                <a href="/feed.xml"><i class="fa fa-rss"></i> RSS Feed</a>
+                <a href="/feed.xml"><i class="fa fa-rss" aria-hidden="true"></i> RSS Feed</a>
             </div>
             <div class="col-sm-4 text-center keyboard-hints">
                 <span title="Navigate stories"><kbd>j</kbd> <kbd>k</kbd></span>

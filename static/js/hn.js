@@ -284,6 +284,8 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
         if (words < 10) return;
         var min = Math.max(1, Math.round(words / 200));
         el.textContent = min + ' min read';
+        var container = el.closest('.reading-time-container');
+        if (container) container.classList.remove('hidden');
     });
 })();
 
