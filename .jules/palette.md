@@ -9,3 +9,7 @@
 ## 2026-05-18 - Archive Navigation and Visual Cue Persistence
 **Learning:** When using JavaScript to dynamically update content within a container that also hosts SVG icons (like the clock icon in post meta), the update logic must target a specific child text element rather than the container's root. This prevents the "flash of unstyled content" where icons disappear after the JS runs. Additionally, for long navigation lists like archives, progressive disclosure ("More..." button) combined with 'e.stopPropagation()' allows users to expand the list without losing their place or closing the menu prematurely.
 **Action:** Always wrap dynamic text in a dedicated <span> and use 'e.stopPropagation()' for in-menu toggles.
+
+## 2025-01-24 - Enhancing Keyboard Navigation and Screen Reader Clarity
+**Learning:** A "Skip to main content" link is a high-impact, low-effort accessibility win for sites with navigation-heavy headers. To implement it correctly, you must pair the link with a semantic landmark (like <main>) that has a matching ID. Additionally, systematically applying 'aria-hidden="true"' to decorative icons and SVGs significantly improves the experience for screen reader users by eliminating redundant or confusing auditory cues.
+**Action:** Always include a skip link on pages with persistent navigation and ensure all purely decorative visual elements are hidden from the accessibility tree.

@@ -99,6 +99,28 @@ body {
     transition: background-color 0.2s, color 0.2s;
 }
 
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--neon);
+    color: white;
+    padding: 8px;
+    z-index: 10001;
+    transition: top 0.2s;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    font-size: 0.85rem;
+    text-decoration: none;
+}
+
+.skip-link:focus {
+    top: 0;
+    outline: none;
+    color: white;
+    text-decoration: none;
+}
+
 body::before {
     content: '';
     position: fixed;

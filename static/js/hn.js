@@ -171,7 +171,7 @@ $(function() {
 });
 
 $.scrollUp({
-    scrollTrigger: '<i class="fa fa-chevron-circle-up fa-3x" id="scrollUp"></i>',
+    scrollTrigger: '<i class="fa fa-chevron-circle-up fa-3x" id="scrollUp" aria-hidden="true"></i>',
     scrollTitle: 'Scroll to top'
 });
 
