@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"io"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mj/hacker-news-digest/config"
@@ -16,20 +17,13 @@ import (
 //go:embed *.gohtml
 var templateFS embed.FS
 
-type PageData struct {
-	NewsList           []*hn.News
-	LastUpdated        time.Time
-	Lang               string
-	DailyLinks         []string
-	Path               string
-	Site               string
-	AdsenseID          string
-	DisableAds         bool
-	DisableTranslation bool
-}
+var (
+	mainTmpl *template.Template
+	tmplErr  error
+	tmplOnce sync.Once
 
-func Render(data *PageData) (string, error) {
-	funcMap := template.FuncMap{
+	// Performance: Define FuncMap at package level to avoid redundant allocations.
+	funcMap = template.FuncMap{
 		"slug": func(n *hn.News) string {
 			return n.Slug()
 		},
@@ -121,14 +115,31 @@ func Render(data *PageData) (string, error) {
 			return trimmed
 		},
 	}
+)
 
-	tmpl, err := template.New("base.gohtml").Funcs(funcMap).ParseFS(templateFS, "*.gohtml")
-	if err != nil {
-		return "", fmt.Errorf("parse templates: %w", err)
+type PageData struct {
+	NewsList           []*hn.News
+	LastUpdated        time.Time
+	Lang               string
+	DailyLinks         []string
+	Path               string
+	Site               string
+	AdsenseID          string
+	DisableAds         bool
+	DisableTranslation bool
+}
+
+func Render(data *PageData) (string, error) {
+	// Performance: Pre-parse templates once and cache the result to avoid redundant filesystem I/O and parsing.
+	tmplOnce.Do(func() {
+		mainTmpl, tmplErr = template.New("base.gohtml").Funcs(funcMap).ParseFS(templateFS, "*.gohtml")
+	})
+	if tmplErr != nil {
+		return "", fmt.Errorf("parse templates: %w", tmplErr)
 	}
 
 	var buf strings.Builder
-	if err := tmpl.ExecuteTemplate(&buf, "base.gohtml", data); err != nil {
+	if err := mainTmpl.ExecuteTemplate(&buf, "base.gohtml", data); err != nil {
 		return "", fmt.Errorf("execute template: %w", err)
 	}
 
@@ -179,13 +190,17 @@ func RenderFeed(newsList []*hn.News, siteURL string) string {
 	return b.String()
 }
 
+// Performance: Use a single strings.Replacer for efficient, single-pass XML escaping.
+var xmlReplacer = strings.NewReplacer(
+	"&", "&amp;",
+	"<", "&lt;",
+	">", "&gt;",
+	"\"", "&quot;",
+	"'", "&apos;",
+)
+
 func escapeXML(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	s = strings.ReplaceAll(s, "\"", "&quot;")
-	s = strings.ReplaceAll(s, "'", "&apos;")
-	return s
+	return xmlReplacer.Replace(s)
 }
 
 type writeWrapper struct {

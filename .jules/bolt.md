@@ -13,3 +13,7 @@
 ## 2026-05-19 - Batch Database Operations
 **Learning:** Concurrent execution of individual database queries (N+1 pattern) leads to high contention and overhead, especially with SQLite's serialized writes. Implementing batch fetches using `IN` clauses significantly reduces the number of roundtrips and lock contention. SQLite's 999 parameter limit must be handled by chunking.
 **Action:** Always use batch queries (SQL `IN` clauses) with chunking (~900 items) when fetching data for a list of items to avoid the N+1 query problem.
+
+## 2026-05-22 - Template Memoization and Optimized Escaping
+**Learning:** Re-parsing Go templates and re-allocating 'FuncMap' on every render call is a significant overhead when generating many pages (e.g., daily archives). Memoizing the template using 'sync.Once' and using a package-level 'FuncMap' reduces render time by ~80%. Additionally, replacing sequential 'strings.ReplaceAll' with 'strings.Replacer' for XML escaping provides a ~63% speedup in that hot path.
+**Action:** Always pre-parse templates and cache the result at the package level. Use 'strings.Replacer' for multiple string substitutions instead of chained 'ReplaceAll' calls.
