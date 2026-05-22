@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/mj/hacker-news-digest/db"
+	"github.com/mj/hacker-news-digest/extractor"
 )
 
 const geminiModelCacheTTL = 6 * time.Hour
@@ -73,7 +74,7 @@ func FetchGeminiModels(apiKey string) ([]string, error) {
 }
 
 func fetchGeminiModelsFromAPI(apiKey string) ([]string, error) {
-	client := &http.Client{Timeout: 15 * time.Second}
+	client := extractor.GetSafeClient(15 * time.Second)
 	u := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models?key=%s", apiKey)
 	resp, err := client.Get(u)
 	if err != nil {
@@ -155,7 +156,7 @@ func NewGeminiClient(apiKey, model string) *GeminiClient {
 	return &GeminiClient{
 		apiKey: apiKey,
 		models: models,
-		client: &http.Client{Timeout: 60 * time.Second},
+		client: extractor.GetSafeClient(60 * time.Second),
 	}
 }
 
