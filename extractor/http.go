@@ -41,7 +41,8 @@ var (
 )
 
 // GetSafeClient returns an http.Client with SSRF protection.
-// It blocks requests to loopback, private, and link-local IP addresses.
+// It blocks requests to loopback, private, and link-local IP addresses,
+// as well as CGNAT, benchmarking, and local network ranges.
 // It reuses a shared transport to enable connection pooling.
 func GetSafeClient(timeout time.Duration) *http.Client {
 	return &http.Client{
@@ -59,5 +60,22 @@ func isRestrictedIP(ip net.IP) bool {
 	if ip.IsPrivate() {
 		return true
 	}
+
+	// Defense-in-depth: explicitly block additional restricted ranges.
+	if ip4 := ip.To4(); ip4 != nil {
+		// 100.64.0.0/10 (CGNAT)
+		if ip4[0] == 100 && (ip4[1] >= 64 && ip4[1] <= 127) {
+			return true
+		}
+		// 198.18.0.0/15 (Benchmarking)
+		if ip4[0] == 198 && (ip4[1] >= 18 && ip4[1] <= 19) {
+			return true
+		}
+		// 0.0.0.0/8 (Local network)
+		if ip4[0] == 0 {
+			return true
+		}
+	}
+
 	return false
 }
