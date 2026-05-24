@@ -59,5 +59,23 @@ func isRestrictedIP(ip net.IP) bool {
 	if ip.IsPrivate() {
 		return true
 	}
+
+	// Additional restricted ranges
+	ipv4 := ip.To4()
+	if ipv4 != nil {
+		// 0.0.0.0/8 (Local network)
+		if ipv4[0] == 0 {
+			return true
+		}
+		// 100.64.0.0/10 (Carrier-grade NAT)
+		if ipv4[0] == 100 && (ipv4[1]&0xc0 == 64) {
+			return true
+		}
+		// 198.18.0.0/15 (Benchmarking)
+		if ipv4[0] == 198 && (ipv4[1]&0xfe == 18) {
+			return true
+		}
+	}
+
 	return false
 }
