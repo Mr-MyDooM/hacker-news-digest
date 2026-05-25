@@ -12,6 +12,7 @@ import (
 	"github.com/mj/hacker-news-digest/db"
 	"github.com/mj/hacker-news-digest/hn"
 	"github.com/mj/hacker-news-digest/publish"
+	"github.com/mj/hacker-news-digest/template"
 )
 
 func main() {
@@ -37,6 +38,7 @@ func main() {
 	}
 	hn.Init(cfg)
 	publish.Init(cfg)
+	template.Init()
 
 	os.MkdirAll(cfg.ImageDir, 0755)
 
