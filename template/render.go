@@ -131,10 +131,11 @@ var globalFuncMap = template.FuncMap{
 
 // Init pre-parses templates from the embedded filesystem and caches them.
 // Performance: This avoids expensive filesystem I/O and parsing overhead on every page render.
-func Init() {
+func Init() error {
 	tmplOnce.Do(func() {
 		cachedTmpl, tmplErr = template.New("base.gohtml").Funcs(globalFuncMap).ParseFS(templateFS, "*.gohtml")
 	})
+	return tmplErr
 }
 
 // Render executes the cached templates with the provided PageData.

@@ -38,7 +38,9 @@ func main() {
 	}
 	hn.Init(cfg)
 	publish.Init(cfg)
-	template.Init()
+	if err := template.Init(); err != nil {
+		log.Fatalf("Template init failed: %v", err)
+	}
 
 	os.MkdirAll(cfg.ImageDir, 0755)
 
