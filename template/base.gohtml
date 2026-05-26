@@ -175,7 +175,9 @@
                 {{domain $news.URL}}
             </span>
             {{if $news.Summary}}<span class="label label-info summary-model"><i class="fa fa-ellipsis-h" aria-hidden="true"></i> {{$news.SummarizedBy}}</span>{{end}}
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> <span class="reading-time" data-slug="{{$news.Slug}}"></span>
+            <span class="reading-time-container hidden" data-slug="{{$news.Slug}}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> <span class="reading-time"></span>
+            </span>
             <button class="share-icon" title="Share permalink" data-slug="{{$news.Slug}}" aria-label="Share permalink">
                 <i class="fa fa-share-alt" aria-hidden="true"></i>
             </button>

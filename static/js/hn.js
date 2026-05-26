@@ -274,7 +274,7 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
 // READING TIME
 // =============================================
 (function() {
-    document.querySelectorAll('.reading-time').forEach(function(el) {
+    document.querySelectorAll('.reading-time-container').forEach(function(el) {
         var slug = el.getAttribute('data-slug');
         var body = document.querySelector('.summary-body[data-slug="' + slug + '"]');
         if (!body) return;
@@ -283,7 +283,11 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
         var words = text.textContent.trim().split(/\s+/).length;
         if (words < 10) return;
         var min = Math.max(1, Math.round(words / 200));
-        el.textContent = min + ' min read';
+        var textEl = el.querySelector('.reading-time');
+        if (textEl) {
+            textEl.textContent = min + ' min read';
+            el.classList.remove('hidden');
+        }
     });
 })();
 
