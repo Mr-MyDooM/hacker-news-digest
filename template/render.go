@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"io"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mj/hacker-news-digest/config"
@@ -15,6 +16,12 @@ import (
 
 //go:embed *.gohtml
 var templateFS embed.FS
+
+var (
+	cachedTmpl *template.Template
+	tmplOnce   sync.Once
+	tmplErr    error
+)
 
 type PageData struct {
 	NewsList           []*hn.News
@@ -28,107 +35,120 @@ type PageData struct {
 	DisableTranslation bool
 }
 
+// Performance: globalFuncMap is defined at package level to avoid redundant allocations on every Render call.
+var globalFuncMap = template.FuncMap{
+	"slug": func(n *hn.News) string {
+		return n.Slug()
+	},
+	"truncateSummary": func(s string, m db.Model) string {
+		if m.CanTruncate() && len([]rune(s)) > 400 {
+			return string([]rune(s)[:400]) + " ..."
+		}
+		return s
+	},
+	"formatTime": func(t time.Time) string {
+		return t.Format("2006-01-02 15:04:05 MST")
+	},
+	"timeAgo": func(t time.Time) string {
+		d := time.Since(t)
+		switch {
+		case d < time.Minute:
+			return "just now"
+		case d < time.Hour:
+			m := int(d.Minutes())
+			if m == 1 {
+				return "1 minute ago"
+			}
+			return fmt.Sprintf("%d minutes ago", m)
+		case d < 24*time.Hour:
+			h := int(d.Hours())
+			if h == 1 {
+				return "1 hour ago"
+			}
+			return fmt.Sprintf("%d hours ago", h)
+		case d < 7*24*time.Hour:
+			days := int(d.Hours() / 24)
+			if days == 1 {
+				return "1 day ago"
+			}
+			return fmt.Sprintf("%d days ago", days)
+		case d < 30*24*time.Hour:
+			weeks := int(d.Hours() / (24 * 7))
+			if weeks == 1 {
+				return "1 week ago"
+			}
+			return fmt.Sprintf("%d weeks ago", weeks)
+		case d < 365*24*time.Hour:
+			months := int(d.Hours() / (24 * 30))
+			if months == 1 {
+				return "1 month ago"
+			}
+			return fmt.Sprintf("%d months ago", months)
+		default:
+			years := int(d.Hours() / (24 * 365))
+			if years == 1 {
+				return "1 year ago"
+			}
+			return fmt.Sprintf("%d years ago", years)
+		}
+	},
+	"domain": func(url string) string {
+		url = strings.TrimPrefix(url, "https://")
+		url = strings.TrimPrefix(url, "http://")
+		parts := strings.SplitN(url, "/", 2)
+		return strings.TrimPrefix(parts[0], "www.")
+	},
+	"hasPrefix": strings.HasPrefix,
+	"join":      strings.Join,
+	"titleBadge": func(title string) template.HTML {
+		var cls, label string
+		switch {
+		case strings.HasPrefix(title, "Show HN:"):
+			cls, label = "show-hn", "Show HN"
+		case strings.HasPrefix(title, "Ask HN:"):
+			cls, label = "ask-hn", "Ask HN"
+		case strings.HasPrefix(title, "Launch HN:"):
+			cls, label = "launch-hn", "Launch HN"
+		}
+		if cls == "" {
+			return ""
+		}
+		return template.HTML(fmt.Sprintf(`<span class="story-badge badge-%s">%s</span>`, cls, label))
+	},
+	"mod":     func(a, b int) int { return a % b },
+	"safeCSS": func(s string) template.CSS { return template.CSS(s) },
+
+	"cleanTitle": func(title string) string {
+		trimmed := title
+		for _, prefix := range []string{"Show HN:", "Ask HN:", "Launch HN:"} {
+			if strings.HasPrefix(trimmed, prefix) {
+				return strings.TrimSpace(strings.TrimPrefix(trimmed, prefix))
+			}
+		}
+		return trimmed
+	},
+}
+
+// Init pre-parses templates from the embedded filesystem and caches them.
+// Performance: This avoids expensive filesystem I/O and parsing overhead on every page render.
+func Init() error {
+	tmplOnce.Do(func() {
+		cachedTmpl, tmplErr = template.New("base.gohtml").Funcs(globalFuncMap).ParseFS(templateFS, "*.gohtml")
+	})
+	return tmplErr
+}
+
+// Render executes the cached templates with the provided PageData.
+// Performance: It uses the pre-parsed cachedTmpl to significantly speed up rendering.
 func Render(data *PageData) (string, error) {
-	funcMap := template.FuncMap{
-		"slug": func(n *hn.News) string {
-			return n.Slug()
-		},
-		"truncateSummary": func(s string, m db.Model) string {
-			if m.CanTruncate() && len([]rune(s)) > 400 {
-				return string([]rune(s)[:400]) + " ..."
-			}
-			return s
-		},
-		"formatTime": func(t time.Time) string {
-			return t.Format("2006-01-02 15:04:05 MST")
-		},
-		"timeAgo": func(t time.Time) string {
-			d := time.Since(t)
-			switch {
-			case d < time.Minute:
-				return "just now"
-			case d < time.Hour:
-				m := int(d.Minutes())
-				if m == 1 {
-					return "1 minute ago"
-				}
-				return fmt.Sprintf("%d minutes ago", m)
-			case d < 24*time.Hour:
-				h := int(d.Hours())
-				if h == 1 {
-					return "1 hour ago"
-				}
-				return fmt.Sprintf("%d hours ago", h)
-			case d < 7*24*time.Hour:
-				days := int(d.Hours() / 24)
-				if days == 1 {
-					return "1 day ago"
-				}
-				return fmt.Sprintf("%d days ago", days)
-			case d < 30*24*time.Hour:
-				weeks := int(d.Hours() / (24 * 7))
-				if weeks == 1 {
-					return "1 week ago"
-				}
-				return fmt.Sprintf("%d weeks ago", weeks)
-			case d < 365*24*time.Hour:
-				months := int(d.Hours() / (24 * 30))
-				if months == 1 {
-					return "1 month ago"
-				}
-				return fmt.Sprintf("%d months ago", months)
-			default:
-				years := int(d.Hours() / (24 * 365))
-				if years == 1 {
-					return "1 year ago"
-				}
-				return fmt.Sprintf("%d years ago", years)
-			}
-		},
-		"domain": func(url string) string {
-			url = strings.TrimPrefix(url, "https://")
-			url = strings.TrimPrefix(url, "http://")
-			parts := strings.SplitN(url, "/", 2)
-			return strings.TrimPrefix(parts[0], "www.")
-		},
-		"hasPrefix": strings.HasPrefix,
-		"join":      strings.Join,
-		"titleBadge": func(title string) template.HTML {
-			var cls, label string
-			switch {
-			case strings.HasPrefix(title, "Show HN:"):
-				cls, label = "show-hn", "Show HN"
-			case strings.HasPrefix(title, "Ask HN:"):
-				cls, label = "ask-hn", "Ask HN"
-			case strings.HasPrefix(title, "Launch HN:"):
-				cls, label = "launch-hn", "Launch HN"
-			}
-			if cls == "" {
-				return ""
-			}
-			return template.HTML(fmt.Sprintf(`<span class="story-badge badge-%s">%s</span>`, cls, label))
-		},
-		"mod":     func(a, b int) int { return a % b },
-		"safeCSS": func(s string) template.CSS { return template.CSS(s) },
+	Init()
 
-		"cleanTitle": func(title string) string {
-			trimmed := title
-			for _, prefix := range []string{"Show HN:", "Ask HN:", "Launch HN:"} {
-				if strings.HasPrefix(trimmed, prefix) {
-					return strings.TrimSpace(strings.TrimPrefix(trimmed, prefix))
-				}
-			}
-			return trimmed
-		},
-	}
-
-	tmpl, err := template.New("base.gohtml").Funcs(funcMap).ParseFS(templateFS, "*.gohtml")
-	if err != nil {
-		return "", fmt.Errorf("parse templates: %w", err)
+	if tmplErr != nil {
+		return "", fmt.Errorf("parse templates: %w", tmplErr)
 	}
 
 	var buf strings.Builder
-	if err := tmpl.ExecuteTemplate(&buf, "base.gohtml", data); err != nil {
+	if err := cachedTmpl.ExecuteTemplate(&buf, "base.gohtml", data); err != nil {
 		return "", fmt.Errorf("execute template: %w", err)
 	}
 
