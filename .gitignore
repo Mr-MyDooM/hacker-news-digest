@@ -17,6 +17,7 @@ output/
 .memsearch/
 .playwright-mcp/
 .claude/
+.jules/
 .Jules/
 AGENTS.md
 
