@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/mj/hacker-news-digest/db"
+	"github.com/mj/hacker-news-digest/extractor"
 )
 
 type OpenAIClient struct {
@@ -20,12 +21,14 @@ type OpenAIClient struct {
 	rateLimiter *RateLimiter
 }
 
+// NewOpenAIClient creates a client for OpenAI or OpenRouter.
+// Security: Uses extractor.GetSafeClient for SSRF protection and connection pooling.
 func NewOpenAIClient(apiKey, baseURL string, models ...string) *OpenAIClient {
 	return &OpenAIClient{
 		apiKey:  apiKey,
 		baseURL: strings.TrimRight(baseURL, "/"),
 		models:  models,
-		client:  &http.Client{Timeout: 60 * time.Second},
+		client:  extractor.GetSafeClient(60 * time.Second),
 	}
 }
 
@@ -98,6 +101,8 @@ func (c *OpenAIClient) callWithFallback(messages []chatMessage) (string, error) 
 	return "", fmt.Errorf("no models configured")
 }
 
+// call performs the API request to OpenAI/OpenRouter.
+// Security: Limits response size to prevent DoS via memory exhaustion.
 func (c *OpenAIClient) call(req chatRequest) (string, error) {
 	if c.rateLimiter != nil {
 		c.rateLimiter.Wait()

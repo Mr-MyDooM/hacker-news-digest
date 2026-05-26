@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/mj/hacker-news-digest/extractor"
 )
 
 const freeModelCacheTTL = 6 * time.Hour
@@ -76,8 +78,10 @@ func FetchFreeModels(apiKey string) ([]string, error) {
 	return ids, nil
 }
 
+// fetchFreeModelsFromAPI discovers free models available on OpenRouter.
+// Security: Uses extractor.GetSafeClient for SSRF protection and connection pooling.
 func fetchFreeModelsFromAPI(apiKey string) ([]string, error) {
-	client := &http.Client{Timeout: 15 * time.Second}
+	client := extractor.GetSafeClient(15 * time.Second)
 	req, err := http.NewRequest("GET", "https://openrouter.ai/api/v1/models", nil)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)

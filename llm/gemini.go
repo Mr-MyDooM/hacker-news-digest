@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/mj/hacker-news-digest/db"
+	"github.com/mj/hacker-news-digest/extractor"
 )
 
 const geminiModelCacheTTL = 6 * time.Hour
@@ -72,10 +73,19 @@ func FetchGeminiModels(apiKey string) ([]string, error) {
 	return ids, nil
 }
 
+// fetchGeminiModelsFromAPI discovers models using the Gemini API.
+// Security: Uses extractor.GetSafeClient for SSRF protection and connection pooling.
+// Security: API key is passed via header to avoid exposure in server logs.
 func fetchGeminiModelsFromAPI(apiKey string) ([]string, error) {
-	client := &http.Client{Timeout: 15 * time.Second}
-	u := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models?key=%s", apiKey)
-	resp, err := client.Get(u)
+	client := extractor.GetSafeClient(15 * time.Second)
+	u := "https://generativelanguage.googleapis.com/v1beta/models"
+	req, err := http.NewRequest("GET", u, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create models request: %w", err)
+	}
+	req.Header.Set("x-goog-api-key", apiKey)
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("fetch models: %w", err)
 	}
@@ -155,7 +165,7 @@ func NewGeminiClient(apiKey, model string) *GeminiClient {
 	return &GeminiClient{
 		apiKey: apiKey,
 		models: models,
-		client: &http.Client{Timeout: 60 * time.Second},
+		client: extractor.GetSafeClient(60 * time.Second),
 	}
 }
 
@@ -314,13 +324,14 @@ func (c *GeminiClient) call(req geminiRequest) (string, error) {
 
 	var lastErr error
 	for _, model := range c.models {
-		u := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s", model, c.apiKey)
+		u := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent", model)
 
 		httpReq, err := http.NewRequest("POST", u, bytes.NewReader(body))
 		if err != nil {
 			lastErr = err
 			continue
 		}
+		httpReq.Header.Set("x-goog-api-key", c.apiKey)
 		httpReq.Header.Set("Content-Type", "application/json")
 
 		resp, err := c.client.Do(httpReq)
