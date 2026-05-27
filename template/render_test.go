@@ -29,3 +29,10 @@ func TestEscapeXML(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkEscapeXML(b *testing.B) {
+	input := "The <quick> brown & \"fox\" jumps 'over' the lazy dog."
+	for i := 0; i < b.N; i++ {
+		escapeXML(input)
+	}
+}
