@@ -302,6 +302,20 @@ body::before {
     color: var(--neon) !important;
 }
 
+.dropdown-menu > li.active > a {
+    color: var(--neon) !important;
+    background: var(--neon-dim) !important;
+    font-weight: 600;
+}
+
+.dropdown-menu > li.active > a::after {
+    content: '\f00c';
+    font-family: FontAwesome;
+    float: right;
+    margin-left: 10px;
+    font-weight: 400;
+}
+
 .dropdown-menu .divider { background-color: var(--divider) !important; }
 
 
@@ -578,6 +592,12 @@ body::before {
 /* =============================================
    READING TIME
    ============================================= */
+.reading-time-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
 .reading-time {
     font-size: 0.72rem;
     color: var(--text-dim);
