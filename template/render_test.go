@@ -29,3 +29,10 @@ func TestEscapeXML(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkEscapeXML(b *testing.B) {
+	input := "This is a <test> with & multiple \"special\" 'characters' that need escaping."
+	for i := 0; i < b.N; i++ {
+		escapeXML(input)
+	}
+}
