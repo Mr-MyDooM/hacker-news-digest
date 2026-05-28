@@ -9,7 +9,11 @@ function setThemeIcon(theme) {
     var icon = document.querySelector('#theme-toggle i');
     var btn = document.querySelector('#theme-toggle');
     if (icon) icon.className = theme === 'dark' ? 'fa fa-sun-o' : 'fa fa-moon-o';
-    if (btn) btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+    if (btn) {
+        var label = theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
+        btn.setAttribute('aria-label', label);
+        btn.setAttribute('title', label);
+    }
 }
 
 // Sync icon on load
@@ -68,6 +72,14 @@ var comparators = Object.assign(Object.create(null), {
     }
 });
 
+function updateActiveDropdownItem(selector, value) {
+    $(selector).each(function() {
+        const item = $(this);
+        const itemValue = item.find('a').data('sort') || item.find('a').data('filter');
+        item.toggleClass('active', String(itemValue) === String(value));
+    });
+}
+
 function applyAndRenderSort(sortBy, sortOrder) {
     const comparator = comparators[sortBy];
     if (!comparator) return;
@@ -93,10 +105,12 @@ function applyAndRenderSort(sortBy, sortOrder) {
     articles.detach();
     $(newsItems).insertBefore($('footer'));
 
+    updateActiveDropdownItem('.sort-dropdown .dropdown-menu li', sortBy);
     updateUrlHash({sort: sortBy, order: sortOrder});
 }
 
 function applyAndRenderFilter(topN) {
+    updateActiveDropdownItem('.filter-dropdown .dropdown-menu li', topN || 'all');
     if (!topN || topN <= 0 || isNaN(topN)) {
         $('article').show();
         return;
