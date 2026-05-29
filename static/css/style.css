@@ -302,6 +302,19 @@ body::before {
     color: var(--neon) !important;
 }
 
+.dropdown-menu > li.active > a {
+    color: var(--neon) !important;
+    font-weight: 500;
+}
+
+.dropdown-menu > li.active > a::after {
+    content: '\f00c';
+    font-family: 'FontAwesome';
+    float: right;
+    margin-left: 10px;
+    font-size: 0.8em;
+}
+
 .dropdown-menu .divider { background-color: var(--divider) !important; }
 
 
