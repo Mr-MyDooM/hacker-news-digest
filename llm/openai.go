@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/mj/hacker-news-digest/db"
+	"github.com/mj/hacker-news-digest/extractor"
 )
 
 type OpenAIClient struct {
@@ -25,7 +26,7 @@ func NewOpenAIClient(apiKey, baseURL string, models ...string) *OpenAIClient {
 		apiKey:  apiKey,
 		baseURL: strings.TrimRight(baseURL, "/"),
 		models:  models,
-		client:  &http.Client{Timeout: 60 * time.Second},
+		client:  extractor.GetSafeClient(60 * time.Second),
 	}
 }
 
