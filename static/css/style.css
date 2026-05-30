@@ -302,6 +302,23 @@ body::before {
     color: var(--neon) !important;
 }
 
+.dropdown-menu > li.active > a {
+    color: var(--neon) !important;
+    background: var(--neon-dim) !important;
+    position: relative;
+    padding-right: 2rem;
+}
+
+.dropdown-menu > li.active > a::after {
+    content: '\f00c';
+    font-family: 'FontAwesome';
+    position: absolute;
+    right: 0.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.8rem;
+}
+
 .dropdown-menu .divider { background-color: var(--divider) !important; }
 
 

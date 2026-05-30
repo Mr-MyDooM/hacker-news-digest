@@ -118,6 +118,11 @@ function setupSortHandlers() {
         const sortBy = $(this).data('sort');
         if (!comparators[sortBy]) return false;
         const sortOrder = (last_sort_by === sortBy) ? 'asc' : 'desc';
+
+        const $li = $(this).parent();
+        $li.closest('.dropdown-menu').find('li').removeClass('active').find('a').removeAttr('aria-current');
+        $li.addClass('active').find('a').attr('aria-current', 'true');
+
         applyAndRenderSort(sortBy, sortOrder);
         last_sort_by = (sortOrder === 'desc') ? sortBy : '';
         $(this).closest('.dropdown').removeClass('open');
@@ -139,6 +144,11 @@ function setupFilterHandlers() {
     $('.filter-dropdown [data-filter]').click(function() {
         const raw = $(this).data('filter');
         const topN = parseInt(raw);
+
+        const $li = $(this).parent();
+        $li.closest('.dropdown-menu').find('li').removeClass('active').find('a').removeAttr('aria-current');
+        $li.addClass('active').find('a').attr('aria-current', 'true');
+
         applyAndRenderFilter(topN);
         updateUrlHash({filter: isNaN(topN) ? '' : topN});
         $(this).closest('.dropdown').removeClass('open');
@@ -160,13 +170,21 @@ $(function() {
     const urlParams = new URLSearchParams(window.location.hash.substring(1));
 
     const filterBy = urlParams.get('filter');
-    if (filterBy) applyAndRenderFilter(parseInt(filterBy));
+    if (filterBy) {
+        applyAndRenderFilter(parseInt(filterBy));
+        $(`.filter-dropdown [data-filter="${filterBy}"]`).parent().addClass('active').find('a').attr('aria-current', 'true');
+    } else {
+        $('.filter-dropdown [data-filter="all"]').parent().addClass('active').find('a').attr('aria-current', 'true');
+    }
 
     const sortBy = urlParams.get('sort');
     const sortOrder = urlParams.get('order') || 'desc';
     if (sortBy && comparators[sortBy]) {
         applyAndRenderSort(sortBy, sortOrder);
         last_sort_by = (sortOrder === 'desc') ? sortBy : '';
+        $(`.sort-dropdown [data-sort="${sortBy}"]`).parent().addClass('active').find('a').attr('aria-current', 'true');
+    } else {
+        $('.sort-dropdown [data-sort="rank"]').parent().addClass('active').find('a').attr('aria-current', 'true');
     }
 });
 
