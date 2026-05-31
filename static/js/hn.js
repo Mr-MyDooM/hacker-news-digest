@@ -113,6 +113,14 @@ function applyAndRenderFilter(topN) {
     });
 }
 
+function updateDropdownActive($container, value, dataAttr) {
+    $container.find('li').removeClass('active').find('a').removeAttr('aria-current');
+    if (value) {
+        const $activeLi = $container.find(`[data-${dataAttr}="${value}"]`).parent('li');
+        $activeLi.addClass('active').find('a').attr('aria-current', 'true');
+    }
+}
+
 function setupSortHandlers() {
     $('.sort-dropdown [data-sort]').click(function() {
         const sortBy = $(this).data('sort');
@@ -120,6 +128,7 @@ function setupSortHandlers() {
         const sortOrder = (last_sort_by === sortBy) ? 'asc' : 'desc';
         applyAndRenderSort(sortBy, sortOrder);
         last_sort_by = (sortOrder === 'desc') ? sortBy : '';
+        updateDropdownActive($('.sort-dropdown'), sortBy, 'sort');
         $(this).closest('.dropdown').removeClass('open');
         return false;
     });
@@ -141,6 +150,7 @@ function setupFilterHandlers() {
         const topN = parseInt(raw);
         applyAndRenderFilter(topN);
         updateUrlHash({filter: isNaN(topN) ? '' : topN});
+        updateDropdownActive($('.filter-dropdown'), raw, 'filter');
         $(this).closest('.dropdown').removeClass('open');
         return false;
     });
@@ -156,17 +166,25 @@ $(function() {
     setupFilterHandlers();
     setupArchiveHandlers();
 
+    // Set defaults
+    updateDropdownActive($('.sort-dropdown'), 'rank', 'sort');
+    updateDropdownActive($('.filter-dropdown'), 'all', 'filter');
+
     // Restore state from URL hash
     const urlParams = new URLSearchParams(window.location.hash.substring(1));
 
     const filterBy = urlParams.get('filter');
-    if (filterBy) applyAndRenderFilter(parseInt(filterBy));
+    if (filterBy) {
+        applyAndRenderFilter(parseInt(filterBy));
+        updateDropdownActive($('.filter-dropdown'), filterBy, 'filter');
+    }
 
     const sortBy = urlParams.get('sort');
     const sortOrder = urlParams.get('order') || 'desc';
     if (sortBy && comparators[sortBy]) {
         applyAndRenderSort(sortBy, sortOrder);
         last_sort_by = (sortOrder === 'desc') ? sortBy : '';
+        updateDropdownActive($('.sort-dropdown'), sortBy, 'sort');
     }
 });
 
