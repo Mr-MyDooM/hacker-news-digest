@@ -29,3 +29,10 @@ func TestEscapeXML(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkEscapeXML(b *testing.B) {
+	input := `This is a "test" of the <escapeXML> function & it's performance.`
+	for i := 0; i < b.N; i++ {
+		escapeXML(input)
+	}
+}
