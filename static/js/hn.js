@@ -8,8 +8,12 @@ function getEffectiveTheme() {
 function setThemeIcon(theme) {
     var icon = document.querySelector('#theme-toggle i');
     var btn = document.querySelector('#theme-toggle');
+    var label = theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
     if (icon) icon.className = theme === 'dark' ? 'fa fa-sun-o' : 'fa fa-moon-o';
-    if (btn) btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+    if (btn) {
+        btn.setAttribute('aria-label', label);
+        btn.setAttribute('title', label);
+    }
 }
 
 // Sync icon on load
@@ -229,11 +233,13 @@ $('.post-item .share-icon').click(function(e) {
         navigator.clipboard.writeText(url).then(function() {
             const icon = btn.find('i');
             const originalLabel = btn.attr('aria-label');
+            const originalTitle = btn.attr('title');
+            const feedback = 'Permalink copied!';
             icon.removeClass('fa-share-alt').addClass('fa-check');
-            btn.attr('aria-label', 'Permalink copied!');
+            btn.attr('aria-label', feedback).attr('title', feedback);
             setTimeout(() => {
                 icon.removeClass('fa-check').addClass('fa-share-alt');
-                btn.attr('aria-label', originalLabel);
+                btn.attr('aria-label', originalLabel).attr('title', originalTitle);
             }, 1500);
         });
     }
@@ -361,9 +367,14 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
     document.addEventListener('keydown', function(e) {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
             if (e.key === 'Escape') {
-                document.getElementById('search-input').blur();
-                if (document.getElementById('search-box')) {
-                    document.getElementById('search-box').classList.add('hidden');
+                var searchClose = document.getElementById('search-close');
+                if (searchClose) {
+                    searchClose.click();
+                } else {
+                    document.getElementById('search-input').blur();
+                    if (document.getElementById('search-box')) {
+                        document.getElementById('search-box').classList.add('hidden');
+                    }
                 }
             }
             return;
@@ -399,6 +410,10 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
                 e.preventDefault();
                 var searchToggle = document.getElementById('search-toggle');
                 if (searchToggle) searchToggle.click();
+                break;
+            case 't':
+                e.preventDefault();
+                $('#theme-toggle').click();
                 break;
         }
     });
