@@ -19,7 +19,8 @@ output/
 .claude/
 .jules/
 .Jules/
-AGENTS.md
+# NOTE: AGENTS.md is intentionally TRACKED — it is the canonical guide Jules reads
+# from the repo root. Do not gitignore it or Jules gets zero repo-side guidance.
 
 # OS files
 .DS_Store
