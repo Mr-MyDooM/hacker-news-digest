@@ -388,21 +388,26 @@ func lcsRatio(a, b string) float64 {
 		}
 		return float64(common) / float64(max(len(wordsA), len(wordsB)))
 	}
-	// Full LCS for short strings
-	dp := make([][]int, m+1)
-	for i := range dp {
-		dp[i] = make([]int, n+1)
+
+	// Full LCS for short strings with O(min(m, n)) space.
+	if m < n {
+		a, b = b, a
+		m, n = n, m
 	}
+	curr := make([]int, n+1)
+	prev := make([]int, n+1)
+
 	for i := 1; i <= m; i++ {
+		copy(prev, curr)
 		for j := 1; j <= n; j++ {
 			if a[i-1] == b[j-1] {
-				dp[i][j] = dp[i-1][j-1] + 1
+				curr[j] = prev[j-1] + 1
 			} else {
-				dp[i][j] = max(dp[i-1][j], dp[i][j-1])
+				curr[j] = max(curr[j-1], prev[j])
 			}
 		}
 	}
-	lcs := dp[m][n]
+	lcs := curr[n]
 	longer := m
 	if n > longer {
 		longer = n
@@ -419,15 +424,15 @@ func max(a, b int) int {
 
 func linkDensity(sel *goquery.Selection) float64 {
 	text := strings.TrimSpace(sel.Text())
-	linkText := ""
-	sel.Find("a").Each(func(i int, a *goquery.Selection) {
-		linkText += a.Text()
-	})
-	linkText = strings.TrimSpace(linkText)
 	if len(text) == 0 {
 		return 1
 	}
-	return float64(len(linkText)) / float64(len(text))
+	var linkTextBuilder strings.Builder
+	sel.Find("a").Each(func(i int, a *goquery.Selection) {
+		linkTextBuilder.WriteString(a.Text())
+	})
+	linkTextLen := len(strings.TrimSpace(linkTextBuilder.String()))
+	return float64(linkTextLen) / float64(len(text))
 }
 
 // isValidContent checks that extracted text looks like real article content, not noise.
@@ -463,35 +468,34 @@ func alphaRatio(text string) float64 {
 // isGibberishLine detects lines that are unlikely to be real prose:
 // too many non-alphanumeric characters, code fragments, or noise.
 func isGibberishLine(line string) bool {
-	runes := []rune(line)
-	if len(runes) < 5 {
+	lineLen := utf8.RuneCountInString(line)
+	if lineLen < 5 {
 		return true
 	}
 	alpha := 0
 	special := 0
-	for _, r := range runes {
+	codeChars := 0
+	for _, r := range line {
 		if unicode.IsLetter(r) {
 			alpha++
 		} else if !unicode.IsSpace(r) && !unicode.IsDigit(r) && !unicode.IsPunct(r) {
 			special++
 		}
-	}
-	// If >30% of chars are non-standard special chars, likely noise
-	if special > 0 && float64(special)/float64(len(runes)) > 0.30 {
-		return true
-	}
-	// If <40% alphabetic, too many symbols/code
-	if float64(alpha)/float64(len(runes)) < 0.40 {
-		return true
-	}
-	// Code-like lines: too many brackets/semicolons
-	codeChars := 0
-	for _, r := range runes {
+
 		if r == '{' || r == '}' || r == '(' || r == ')' || r == ';' || r == '=' || r == '<' || r == '>' {
 			codeChars++
 		}
 	}
-	if codeChars > 0 && float64(codeChars)/float64(len(runes)) > 0.10 {
+	// If >30% of chars are non-standard special chars, likely noise
+	if special > 0 && float64(special)/float64(lineLen) > 0.30 {
+		return true
+	}
+	// If <40% alphabetic, too many symbols/code
+	if float64(alpha)/float64(lineLen) < 0.40 {
+		return true
+	}
+	// Code-like lines: too many brackets/semicolons
+	if codeChars > 0 && float64(codeChars)/float64(lineLen) > 0.10 {
 		return true
 	}
 	return false
