@@ -61,12 +61,12 @@ This project was ported from Python to Go (May 2026).
 ## Production
 
 - **Host**: (your server)
-- **Path**: `/srv/mj/docker/hacker-news/`
+- **Path**: `<deploy-path>` (server-side deploy directory)
 - **Container**: `hn-digest` (image: `hacker-news-hn-digest`)
 - **Nginx**: on host (not Docker), serves from `output/` on port 443
 - **Nginx config**: `nginx-hn.conf` in repo root, deployed to `/etc/nginx/sites-available/hn.conf` (symlinked in sites-enabled)
 - **Site**: https://HackerNews.mrityunjay.dev
-- **Deploy**: `ssh <host>` -> `cd /srv/mj/docker/hacker-news && docker compose -f docker-compose.hn.yml up -d --build`
+- **Deploy**: `ssh <host>` -> `cd <deploy-path> && docker compose -f docker-compose.hn.yml up -d --build`
 - **Static assets**: `main.go` copies `static/` -> `output/static/` during generation
 
 ## Anti-Scraping
