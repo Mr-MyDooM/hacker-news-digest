@@ -116,7 +116,10 @@ function applyAndRenderFilter(topN) {
 function updateDropdownActive($container, value, dataAttr) {
     $container.find('li').removeClass('active').find('a').removeAttr('aria-current');
     if (value) {
-        const $activeLi = $container.find(`[data-${dataAttr}="${value}"]`).parent('li');
+        // Use filter() instead of string interpolation in selector to prevent selector injection
+        const $activeLi = $container.find('a').filter(function() {
+            return $(this).data(dataAttr) == value;
+        }).parent('li');
         $activeLi.addClass('active').find('a').attr('aria-current', 'true');
     }
 }
