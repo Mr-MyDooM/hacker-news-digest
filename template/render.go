@@ -129,6 +129,17 @@ var globalFuncMap = template.FuncMap{
 	},
 }
 
+// Performance: xmlReplacer is implemented as a package-level global using strings.NewReplacer.
+// This ensures thread-safety and avoids the overhead of reconstructing the replacer object on every call to escapeXML,
+// providing a significant performance boost over sequential strings.ReplaceAll calls.
+var xmlReplacer = strings.NewReplacer(
+	"&", "&amp;",
+	"<", "&lt;",
+	">", "&gt;",
+	"\"", "&quot;",
+	"'", "&apos;",
+)
+
 // Init pre-parses templates from the embedded filesystem and caches them.
 // Performance: This avoids expensive filesystem I/O and parsing overhead on every page render.
 func Init() error {
@@ -200,12 +211,7 @@ func RenderFeed(newsList []*hn.News, siteURL string) string {
 }
 
 func escapeXML(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	s = strings.ReplaceAll(s, "\"", "&quot;")
-	s = strings.ReplaceAll(s, "'", "&apos;")
-	return s
+	return xmlReplacer.Replace(s)
 }
 
 type writeWrapper struct {
