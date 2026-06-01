@@ -591,6 +591,12 @@ body::before {
 /* =============================================
    READING TIME
    ============================================= */
+.reading-time-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
 .reading-time {
     font-size: 0.72rem;
     color: var(--text-dim);
