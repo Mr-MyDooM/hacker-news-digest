@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"unicode/utf8"
 	"time"
 
 	"github.com/mj/hacker-news-digest/config"
@@ -21,6 +22,15 @@ var (
 	cachedTmpl *template.Template
 	tmplOnce   sync.Once
 	tmplErr    error
+
+	// Performance: xmlReplacer is pre-allocated to speed up XML escaping in feeds.
+	xmlReplacer = strings.NewReplacer(
+		"&", "&amp;",
+		"<", "&lt;",
+		">", "&gt;",
+		"\"", "&quot;",
+		"'", "&apos;",
+	)
 )
 
 type PageData struct {
@@ -41,8 +51,16 @@ var globalFuncMap = template.FuncMap{
 		return n.Slug()
 	},
 	"truncateSummary": func(s string, m db.Model) string {
-		if m.CanTruncate() && len([]rune(s)) > 400 {
-			return string([]rune(s)[:400]) + " ..."
+		// Performance: avoid expensive []rune conversion by using utf8.RuneCountInString
+		// and a single-pass range loop to find the 400th rune boundary.
+		if m.CanTruncate() && utf8.RuneCountInString(s) > 400 {
+			count := 0
+			for idx := range s {
+				if count == 400 {
+					return s[:idx] + " ..."
+				}
+				count++
+			}
 		}
 		return s
 	},
@@ -200,12 +218,8 @@ func RenderFeed(newsList []*hn.News, siteURL string) string {
 }
 
 func escapeXML(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	s = strings.ReplaceAll(s, "\"", "&quot;")
-	s = strings.ReplaceAll(s, "'", "&apos;")
-	return s
+	// Performance: Use pre-allocated strings.Replacer for efficient single-pass replacement.
+	return xmlReplacer.Replace(s)
 }
 
 type writeWrapper struct {
