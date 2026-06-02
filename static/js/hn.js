@@ -9,7 +9,11 @@ function setThemeIcon(theme) {
     var icon = document.querySelector('#theme-toggle i');
     var btn = document.querySelector('#theme-toggle');
     if (icon) icon.className = theme === 'dark' ? 'fa fa-sun-o' : 'fa fa-moon-o';
-    if (btn) btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+    if (btn) {
+        var label = theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
+        btn.setAttribute('aria-label', label);
+        btn.setAttribute('title', label + ' (t)');
+    }
 }
 
 // Sync icon on load
@@ -361,27 +365,39 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
     document.addEventListener('keydown', function(e) {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
             if (e.key === 'Escape') {
-                document.getElementById('search-input').blur();
-                if (document.getElementById('search-box')) {
-                    document.getElementById('search-box').classList.add('hidden');
+                var searchClose = document.getElementById('search-close');
+                if (searchClose) {
+                    searchClose.click();
+                } else {
+                    // Fallback if button is missing
+                    document.getElementById('search-input').blur();
+                    var searchBox = document.getElementById('search-box');
+                    if (searchBox) searchBox.classList.add('hidden');
                 }
             }
             return;
         }
 
         refreshItems();
-        if (items.length === 0) return;
 
         switch (e.key) {
+            case 't':
+                e.preventDefault();
+                var themeToggle = document.getElementById('theme-toggle');
+                if (themeToggle) themeToggle.click();
+                break;
             case 'j':
+                if (items.length === 0) break;
                 e.preventDefault();
                 scrollToItem(current < items.length - 1 ? current + 1 : 0);
                 break;
             case 'k':
+                if (items.length === 0) break;
                 e.preventDefault();
                 scrollToItem(current > 0 ? current - 1 : items.length - 1);
                 break;
             case 'o':
+                if (items.length === 0) break;
                 e.preventDefault();
                 if (current >= 0 && current < items.length) {
                     var link = items[current].querySelector('.post-title a');
@@ -389,6 +405,7 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
                 }
                 break;
             case 'c':
+                if (items.length === 0) break;
                 e.preventDefault();
                 if (current >= 0 && current < items.length) {
                     var commentLink = items[current].querySelector('.comment a');
@@ -399,6 +416,10 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
                 e.preventDefault();
                 var searchToggle = document.getElementById('search-toggle');
                 if (searchToggle) searchToggle.click();
+                break;
+            case 'Escape':
+                var searchClose = document.getElementById('search-close');
+                if (searchClose) searchClose.click();
                 break;
         }
     });
