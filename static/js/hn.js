@@ -8,8 +8,12 @@ function getEffectiveTheme() {
 function setThemeIcon(theme) {
     var icon = document.querySelector('#theme-toggle i');
     var btn = document.querySelector('#theme-toggle');
+    var label = theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
     if (icon) icon.className = theme === 'dark' ? 'fa fa-sun-o' : 'fa fa-moon-o';
-    if (btn) btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+    if (btn) {
+        btn.setAttribute('aria-label', label);
+        btn.setAttribute('title', label);
+    }
 }
 
 // Sync icon on load
@@ -302,6 +306,8 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
         if (words < 10) return;
         var min = Math.max(1, Math.round(words / 200));
         el.textContent = min + ' min read';
+        var meta = el.closest('.reading-time-meta');
+        if (meta) meta.classList.remove('hidden');
     });
 })();
 
@@ -361,15 +367,27 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
     document.addEventListener('keydown', function(e) {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
             if (e.key === 'Escape') {
-                document.getElementById('search-input').blur();
-                if (document.getElementById('search-box')) {
-                    document.getElementById('search-box').classList.add('hidden');
-                }
+                var searchClose = document.getElementById('search-close');
+                if (searchClose) searchClose.click();
             }
             return;
         }
 
         refreshItems();
+
+        switch (e.key) {
+            case 't':
+                e.preventDefault();
+                var themeToggle = document.getElementById('theme-toggle');
+                if (themeToggle) themeToggle.click();
+                break;
+            case '/':
+                e.preventDefault();
+                var searchToggle = document.getElementById('search-toggle');
+                if (searchToggle) searchToggle.click();
+                break;
+        }
+
         if (items.length === 0) return;
 
         switch (e.key) {
@@ -394,11 +412,6 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
                     var commentLink = items[current].querySelector('.comment a');
                     if (commentLink) window.open(commentLink.href, '_blank');
                 }
-                break;
-            case '/':
-                e.preventDefault();
-                var searchToggle = document.getElementById('search-toggle');
-                if (searchToggle) searchToggle.click();
                 break;
         }
     });

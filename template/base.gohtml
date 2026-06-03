@@ -175,7 +175,9 @@
                 {{domain $news.URL}}
             </span>
             {{if $news.Summary}}<span class="label label-info summary-model"><i class="fa fa-ellipsis-h" aria-hidden="true"></i> {{$news.SummarizedBy}}</span>{{end}}
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> <span class="reading-time" data-slug="{{$news.Slug}}"></span>
+            <span class="reading-time-meta hidden">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> <span class="reading-time" data-slug="{{$news.Slug}}"></span>
+            </span>
             <button class="share-icon" title="Share permalink" data-slug="{{$news.Slug}}" aria-label="Share permalink">
                 <i class="fa fa-share-alt" aria-hidden="true"></i>
             </button>
@@ -229,6 +231,7 @@
                 <span title="Open story"><kbd>o</kbd></span>
                 <span title="Open comments"><kbd>c</kbd></span>
                 <span title="Search"><kbd>/</kbd></span>
+                <span title="Toggle theme"><kbd>t</kbd></span>
             </div>
             <div class="col-sm-4 text-right">
                 Last updated: <span class="last-updated" data-updated="{{.LastUpdated.UTC.Format "2006-01-02T15:04:05Z"}}" title="{{.LastUpdated.Format "2006-01-02 15:04:05 IST"}}">{{timeAgo .LastUpdated}}</span>
