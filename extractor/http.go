@@ -75,6 +75,35 @@ func isRestrictedIP(ip net.IP) bool {
 		if ipv4[0] == 198 && (ipv4[1] == 18 || ipv4[1] == 19) {
 			return true
 		}
+		// 192.0.0.0/24 (IETF Protocol Assignments)
+		if ipv4[0] == 192 && ipv4[1] == 0 && ipv4[2] == 0 {
+			return true
+		}
+		// 192.0.2.0/24 (TEST-NET-1), 198.51.100.0/24 (TEST-NET-2), 203.0.113.0/24 (TEST-NET-3)
+		if (ipv4[0] == 192 && ipv4[1] == 0 && ipv4[2] == 2) ||
+			(ipv4[0] == 198 && ipv4[1] == 51 && ipv4[2] == 100) ||
+			(ipv4[0] == 203 && ipv4[1] == 0 && ipv4[2] == 113) {
+			return true
+		}
+		// 192.88.99.0/24 (6to4 Relay)
+		if ipv4[0] == 192 && ipv4[1] == 88 && ipv4[2] == 99 {
+			return true
+		}
+	}
+
+	// IPv6 Defense-in-depth
+	if len(ip) == 16 && ip.To4() == nil {
+		// 64:ff9b::/96 (NAT64)
+		if ip[0] == 0x00 && ip[1] == 0x64 && ip[2] == 0xff && ip[3] == 0x9b &&
+			ip[4] == 0x00 && ip[5] == 0x00 && ip[6] == 0x00 && ip[7] == 0x00 &&
+			ip[8] == 0x00 && ip[9] == 0x00 && ip[10] == 0x00 && ip[11] == 0x00 {
+			return true
+		}
+		// 100::/64 (Discard-Only Address Block)
+		if ip[0] == 0x01 && ip[1] == 0x00 &&
+			ip[2] == 0x00 && ip[3] == 0x00 && ip[4] == 0x00 && ip[5] == 0x00 && ip[6] == 0x00 && ip[7] == 0x00 {
+			return true
+		}
 	}
 
 	return false
