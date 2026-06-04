@@ -21,6 +21,15 @@ var (
 	cachedTmpl *template.Template
 	tmplOnce   sync.Once
 	tmplErr    error
+
+	// Performance: pre-allocated replacer for XML escaping to avoid multiple string allocations.
+	xmlReplacer = strings.NewReplacer(
+		"&", "&amp;",
+		"<", "&lt;",
+		">", "&gt;",
+		"\"", "&quot;",
+		"'", "&apos;",
+	)
 )
 
 type PageData struct {
@@ -40,12 +49,7 @@ var globalFuncMap = template.FuncMap{
 	"slug": func(n *hn.News) string {
 		return n.Slug()
 	},
-	"truncateSummary": func(s string, m db.Model) string {
-		if m.CanTruncate() && len([]rune(s)) > 400 {
-			return string([]rune(s)[:400]) + " ..."
-		}
-		return s
-	},
+	"truncateSummary": truncateSummary,
 	"formatTime": func(t time.Time) string {
 		return t.Format("2006-01-02 15:04:05 MST")
 	},
@@ -200,11 +204,24 @@ func RenderFeed(newsList []*hn.News, siteURL string) string {
 }
 
 func escapeXML(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	s = strings.ReplaceAll(s, "\"", "&quot;")
-	s = strings.ReplaceAll(s, "'", "&apos;")
+	return xmlReplacer.Replace(s)
+}
+
+// truncateSummary limits the summary text to 400 runes if the model allows it.
+// Performance: It uses a single-pass range loop to find the byte index of the 400th rune,
+// avoiding expensive []rune(s) conversions and heap allocations.
+func truncateSummary(s string, m db.Model) string {
+	if !m.CanTruncate() {
+		return s
+	}
+	const maxRunes = 400
+	count := 0
+	for i := range s {
+		if count == maxRunes {
+			return s[:i] + " ..."
+		}
+		count++
+	}
 	return s
 }
 
