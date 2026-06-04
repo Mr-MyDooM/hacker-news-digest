@@ -8,8 +8,12 @@ function getEffectiveTheme() {
 function setThemeIcon(theme) {
     var icon = document.querySelector('#theme-toggle i');
     var btn = document.querySelector('#theme-toggle');
+    var label = theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
     if (icon) icon.className = theme === 'dark' ? 'fa fa-sun-o' : 'fa fa-moon-o';
-    if (btn) btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+    if (btn) {
+        btn.setAttribute('aria-label', label);
+        btn.setAttribute('title', label);
+    }
 }
 
 // Sync icon on load
@@ -361,12 +365,38 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
     document.addEventListener('keydown', function(e) {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
             if (e.key === 'Escape') {
-                document.getElementById('search-input').blur();
-                if (document.getElementById('search-box')) {
-                    document.getElementById('search-box').classList.add('hidden');
+                var searchClose = document.getElementById('search-close');
+                if (searchClose) {
+                    searchClose.click();
+                } else {
+                    e.target.blur();
+                    var searchBox = document.getElementById('search-box');
+                    if (searchBox) searchBox.classList.add('hidden');
                 }
             }
             return;
+        }
+
+        if (e.key === 'Escape') {
+            var searchBox = document.getElementById('search-box');
+            var searchClose = document.getElementById('search-close');
+            if (searchBox && !searchBox.classList.contains('hidden') && searchClose) {
+                searchClose.click();
+                return;
+            }
+        }
+
+        switch (e.key) {
+            case '/':
+                e.preventDefault();
+                var searchToggle = document.getElementById('search-toggle');
+                if (searchToggle) searchToggle.click();
+                return;
+            case 't':
+                e.preventDefault();
+                var themeToggle = document.getElementById('theme-toggle');
+                if (themeToggle) themeToggle.click();
+                return;
         }
 
         refreshItems();
@@ -394,11 +424,6 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
                     var commentLink = items[current].querySelector('.comment a');
                     if (commentLink) window.open(commentLink.href, '_blank');
                 }
-                break;
-            case '/':
-                e.preventDefault();
-                var searchToggle = document.getElementById('search-toggle');
-                if (searchToggle) searchToggle.click();
                 break;
         }
     });
