@@ -9,7 +9,11 @@ function setThemeIcon(theme) {
     var icon = document.querySelector('#theme-toggle i');
     var btn = document.querySelector('#theme-toggle');
     if (icon) icon.className = theme === 'dark' ? 'fa fa-sun-o' : 'fa fa-moon-o';
-    if (btn) btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+    if (btn) {
+        var label = theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
+        btn.setAttribute('aria-label', label);
+        btn.setAttribute('title', label);
+    }
 }
 
 // Sync icon on load
@@ -156,8 +160,8 @@ function setupFilterHandlers() {
     });
 }
 
-function PreviewImage(src) {
-    $('#img-preview-modal img').attr('src', src);
+function PreviewImage(src, alt) {
+    $('#img-preview-modal img').attr('src', src).attr('alt', alt || 'preview');
     $('#img-preview-modal').modal();
 }
 
@@ -211,8 +215,10 @@ $.scrollUp({
 
 // Feature image modal
 $('.post-item .post-summary').on('click', '.feature-image', function(e) {
-    var src = $(this).find('img').attr('src');
-    if (src) PreviewImage(src);
+    var img = $(this).find('img');
+    var src = img.attr('src');
+    var alt = img.attr('alt');
+    if (src) PreviewImage(src, alt);
     return false;
 });
 
@@ -229,11 +235,14 @@ $('.post-item .share-icon').click(function(e) {
         navigator.clipboard.writeText(url).then(function() {
             const icon = btn.find('i');
             const originalLabel = btn.attr('aria-label');
+            const originalTitle = btn.attr('title');
             icon.removeClass('fa-share-alt').addClass('fa-check');
             btn.attr('aria-label', 'Permalink copied!');
+            btn.attr('title', 'Permalink copied!');
             setTimeout(() => {
                 icon.removeClass('fa-check').addClass('fa-share-alt');
                 btn.attr('aria-label', originalLabel);
+                btn.attr('title', originalTitle);
             }, 1500);
         });
     }
@@ -266,7 +275,7 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
     function plural(n, word) {
         return n + ' ' + (n === 1 ? word : word + 's');
     }
-    document.querySelectorAll('.summit-time[data-submitted]').forEach(function(el) {
+    document.querySelectorAll('.submit-time[data-submitted]').forEach(function(el) {
         var rel = timeAgo(el.getAttribute('data-submitted'));
         if (rel) {
             var textNode = el.querySelector('.time-ago-text');
@@ -370,18 +379,20 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
         }
 
         refreshItems();
-        if (items.length === 0) return;
 
         switch (e.key) {
             case 'j':
+                if (items.length === 0) break;
                 e.preventDefault();
                 scrollToItem(current < items.length - 1 ? current + 1 : 0);
                 break;
             case 'k':
+                if (items.length === 0) break;
                 e.preventDefault();
                 scrollToItem(current > 0 ? current - 1 : items.length - 1);
                 break;
             case 'o':
+                if (items.length === 0) break;
                 e.preventDefault();
                 if (current >= 0 && current < items.length) {
                     var link = items[current].querySelector('.post-title a');
@@ -389,6 +400,7 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
                 }
                 break;
             case 'c':
+                if (items.length === 0) break;
                 e.preventDefault();
                 if (current >= 0 && current < items.length) {
                     var commentLink = items[current].querySelector('.comment a');
@@ -399,6 +411,17 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
                 e.preventDefault();
                 var searchToggle = document.getElementById('search-toggle');
                 if (searchToggle) searchToggle.click();
+                break;
+            case 't':
+                e.preventDefault();
+                $('#theme-toggle').click();
+                break;
+            case 'Escape':
+                var searchClose = document.getElementById('search-close');
+                var searchBox = document.getElementById('search-box');
+                if (searchClose && searchBox && !searchBox.classList.contains('hidden')) {
+                    searchClose.click();
+                }
                 break;
         }
     });

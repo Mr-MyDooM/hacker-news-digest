@@ -167,7 +167,7 @@
                 <i class="fa fa-user" aria-hidden="true"></i>
                 <a href="https://news.ycombinator.com/user?id={{$news.Author}}">{{$news.Author}}</a>
             </span>
-            <span class="summit-time" data-submitted="{{$news.SubmitTime.UTC.Format "2006-01-02T15:04:05Z"}}" title="{{$news.SubmitTime.Format "02 Jan 2006 15:04"}} IST"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> <span class="time-ago-text">{{timeAgo $news.SubmitTime}}</span></span>
+            <span class="submit-time" data-submitted="{{$news.SubmitTime.UTC.Format "2006-01-02T15:04:05Z"}}" title="{{$news.SubmitTime.Format "02 Jan 2006 15:04"}} IST"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> <span class="time-ago-text">{{timeAgo $news.SubmitTime}}</span></span>
             <span class="host">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                 <img src="https://www.google.com/s2/favicons?domain={{domain $news.URL}}" width="16" height="16" alt=""
@@ -190,8 +190,8 @@
         {{if or $news.Summary $news.Image}}
         <div class="post-summary">
             {{if $news.Image}}
-            <button class="feature-image" aria-label="Zoom feature image">
-                <img src="{{$news.Image.URL}}" alt="feature image" loading="lazy">
+            <button class="feature-image" aria-label="Zoom feature image for {{cleanTitle $news.Title}}">
+                <img src="{{$news.Image.URL}}" alt="Feature image for {{cleanTitle $news.Title}}" loading="lazy">
             </button>
             {{end}}
             {{if $news.Summary}}
@@ -229,6 +229,7 @@
                 <span title="Open story"><kbd>o</kbd></span>
                 <span title="Open comments"><kbd>c</kbd></span>
                 <span title="Search"><kbd>/</kbd></span>
+                <span title="Toggle theme"><kbd>t</kbd></span>
             </div>
             <div class="col-sm-4 text-right">
                 Last updated: <span class="last-updated" data-updated="{{.LastUpdated.UTC.Format "2006-01-02T15:04:05Z"}}" title="{{.LastUpdated.Format "2006-01-02 15:04:05 IST"}}">{{timeAgo .LastUpdated}}</span>
