@@ -18,9 +18,16 @@ import (
 var templateFS embed.FS
 
 var (
-	cachedTmpl *template.Template
-	tmplOnce   sync.Once
-	tmplErr    error
+	cachedTmpl  *template.Template
+	tmplOnce    sync.Once
+	tmplErr     error
+	xmlReplacer = strings.NewReplacer(
+		"&", "&amp;",
+		"<", "&lt;",
+		">", "&gt;",
+		"\"", "&quot;",
+		"'", "&apos;",
+	)
 )
 
 type PageData struct {
@@ -41,8 +48,17 @@ var globalFuncMap = template.FuncMap{
 		return n.Slug()
 	},
 	"truncateSummary": func(s string, m db.Model) string {
-		if m.CanTruncate() && len([]rune(s)) > 400 {
-			return string([]rune(s)[:400]) + " ..."
+		if !m.CanTruncate() {
+			return s
+		}
+		// Performance: Avoid expensive []rune(s) heap allocation.
+		// Use single-pass range loop to find truncation boundary.
+		count := 0
+		for i := range s {
+			count++
+			if count > 400 {
+				return s[:i] + " ..."
+			}
 		}
 		return s
 	},
@@ -200,12 +216,8 @@ func RenderFeed(newsList []*hn.News, siteURL string) string {
 }
 
 func escapeXML(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	s = strings.ReplaceAll(s, "\"", "&quot;")
-	s = strings.ReplaceAll(s, "'", "&apos;")
-	return s
+	// Performance: Use pre-allocated Replacer for single-pass replacement.
+	return xmlReplacer.Replace(s)
 }
 
 type writeWrapper struct {
