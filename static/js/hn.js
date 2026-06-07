@@ -359,13 +359,16 @@ setTimeout(() => $('.post-item img').attr('loading', 'eager'), 30000);
     }
 
     document.addEventListener('keydown', function(e) {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-            if (e.key === 'Escape') {
-                document.getElementById('search-input').blur();
-                if (document.getElementById('search-box')) {
-                    document.getElementById('search-box').classList.add('hidden');
-                }
+        if (e.key === 'Escape') {
+            var searchClose = document.getElementById('search-close');
+            var searchBox = document.getElementById('search-box');
+            if (searchBox && !searchBox.classList.contains('hidden')) {
+                if (searchClose) searchClose.click();
+                return;
             }
+        }
+
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
             return;
         }
 
