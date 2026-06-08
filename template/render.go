@@ -40,9 +40,18 @@ var globalFuncMap = template.FuncMap{
 	"slug": func(n *hn.News) string {
 		return n.Slug()
 	},
+	// Performance: truncateSummary avoids []rune conversions and extra passes by using a
+	// single-pass range loop to find the truncation point, saving memory and CPU.
 	"truncateSummary": func(s string, m db.Model) string {
-		if m.CanTruncate() && len([]rune(s)) > 400 {
-			return string([]rune(s)[:400]) + " ..."
+		if !m.CanTruncate() {
+			return s
+		}
+		count := 0
+		for i := range s {
+			if count == 400 {
+				return s[:i] + " ..."
+			}
+			count++
 		}
 		return s
 	},
