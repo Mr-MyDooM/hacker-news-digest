@@ -51,6 +51,9 @@ func GetSafeClient(timeout time.Duration) *http.Client {
 }
 
 func isRestrictedIP(ip net.IP) bool {
+	if ip == nil {
+		return true
+	}
 	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsInterfaceLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
 		return true
 	}
@@ -71,9 +74,54 @@ func isRestrictedIP(ip net.IP) bool {
 		if ipv4[0] == 100 && (ipv4[1] >= 64 && ipv4[1] <= 127) {
 			return true
 		}
+		// 192.0.0.0/24 (IETF Protocol Assignments)
+		if ipv4[0] == 192 && ipv4[1] == 0 && ipv4[2] == 0 {
+			return true
+		}
+		// 192.0.2.0/24 (TEST-NET-1), 198.51.100.0/24 (TEST-NET-2), 203.0.113.0/24 (TEST-NET-3)
+		if (ipv4[0] == 192 && ipv4[1] == 0 && ipv4[2] == 2) ||
+			(ipv4[0] == 198 && ipv4[1] == 51 && ipv4[2] == 100) ||
+			(ipv4[0] == 203 && ipv4[1] == 0 && ipv4[2] == 113) {
+			return true
+		}
+		// 192.88.99.0/24 (6to4 Relay)
+		if ipv4[0] == 192 && ipv4[1] == 88 && ipv4[2] == 99 {
+			return true
+		}
 		// 198.18.0.0/15 (Benchmarking)
 		if ipv4[0] == 198 && (ipv4[1] == 18 || ipv4[1] == 19) {
 			return true
+		}
+		// 240.0.0.0/4 (Reserved)
+		if ipv4[0] >= 240 {
+			return true
+		}
+	} else {
+		// IPv6 defense-in-depth
+		ipv6 := ip.To16()
+		if len(ipv6) == 16 {
+			// 64:ff9b::/96 (NAT64)
+			if ipv6[0] == 0 && ipv6[1] == 0x64 && ipv6[2] == 0xff && ipv6[3] == 0x9b &&
+				ipv6[4] == 0 && ipv6[5] == 0 && ipv6[6] == 0 && ipv6[7] == 0 &&
+				ipv6[8] == 0 && ipv6[9] == 0 && ipv6[10] == 0 && ipv6[11] == 0 {
+				return true
+			}
+			// 100::/64 (Discard-Only)
+			if ipv6[0] == 0x01 && ipv6[1] == 0x00 && ipv6[2] == 0 && ipv6[3] == 0 &&
+				ipv6[4] == 0 && ipv6[5] == 0 && ipv6[6] == 0 && ipv6[7] == 0 {
+				return true
+			}
+			// 2001:db8::/32 (Documentation)
+			if ipv6[0] == 0x20 && ipv6[1] == 0x01 && ipv6[2] == 0x0d && ipv6[3] == 0xb8 {
+				return true
+			}
+			// ::7f00:1 (IPv4-compatible loopback)
+			if ipv6[0] == 0 && ipv6[1] == 0 && ipv6[2] == 0 && ipv6[3] == 0 &&
+				ipv6[4] == 0 && ipv6[5] == 0 && ipv6[6] == 0 && ipv6[7] == 0 &&
+				ipv6[8] == 0 && ipv6[9] == 0 && ipv6[10] == 0 && ipv6[11] == 0 &&
+				ipv6[12] == 0x7f && ipv6[13] == 0 && ipv6[14] == 0 && ipv6[15] == 1 {
+				return true
+			}
 		}
 	}
 
