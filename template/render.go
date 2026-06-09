@@ -41,8 +41,15 @@ var globalFuncMap = template.FuncMap{
 		return n.Slug()
 	},
 	"truncateSummary": func(s string, m db.Model) string {
-		if m.CanTruncate() && len([]rune(s)) > 400 {
-			return string([]rune(s)[:400]) + " ..."
+		if !m.CanTruncate() {
+			return s
+		}
+		count := 0
+		for i := range s {
+			if count == 400 {
+				return s[:i] + " ..."
+			}
+			count++
 		}
 		return s
 	},
@@ -155,6 +162,14 @@ func Render(data *PageData) (string, error) {
 	return buf.String(), nil
 }
 
+var xmlReplacer = strings.NewReplacer(
+	"&", "&amp;",
+	"<", "&lt;",
+	">", "&gt;",
+	"\"", "&quot;",
+	"'", "&apos;",
+)
+
 func RenderFeed(newsList []*hn.News, siteURL string) string {
 	escapedSiteURL := escapeXML(siteURL)
 	now := time.Now().In(config.IST)
@@ -200,12 +215,7 @@ func RenderFeed(newsList []*hn.News, siteURL string) string {
 }
 
 func escapeXML(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	s = strings.ReplaceAll(s, "\"", "&quot;")
-	s = strings.ReplaceAll(s, "'", "&apos;")
-	return s
+	return xmlReplacer.Replace(s)
 }
 
 type writeWrapper struct {

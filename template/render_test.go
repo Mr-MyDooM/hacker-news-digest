@@ -1,7 +1,10 @@
 package template
 
 import (
+	"strings"
 	"testing"
+
+	"github.com/mj/hacker-news-digest/db"
 )
 
 func TestEscapeXML(t *testing.T) {
@@ -27,5 +30,68 @@ func TestEscapeXML(t *testing.T) {
 		if got != tt.expected {
 			t.Errorf("escapeXML(%q) = %q, want %q", tt.input, got, tt.expected)
 		}
+	}
+}
+
+func TestTruncateSummary(t *testing.T) {
+	truncateFn := globalFuncMap["truncateSummary"].(func(string, db.Model) string)
+
+	tests := []struct {
+		name     string
+		input    string
+		model    db.Model
+		expected string
+	}{
+		{
+			name:     "short string no truncate",
+			input:    "short",
+			model:    db.ModelFull,
+			expected: "short",
+		},
+		{
+			name:     "long string truncate",
+			input:    strings.Repeat("a", 401),
+			model:    db.ModelFull,
+			expected: strings.Repeat("a", 400) + " ...",
+		},
+		{
+			name:     "model cannot truncate",
+			input:    strings.Repeat("a", 401),
+			model:    db.ModelOpenAI,
+			expected: strings.Repeat("a", 401),
+		},
+		{
+			name:     "multi-byte characters",
+			input:    strings.Repeat("世", 401),
+			model:    db.ModelFull,
+			expected: strings.Repeat("世", 400) + " ...",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := truncateFn(tt.input, tt.model)
+			if got != tt.expected {
+				t.Errorf("truncateSummary() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkEscapeXML(b *testing.B) {
+	input := `This is a "test" of the <escapeXML> function & it's quite 'important' for RSS/Atom feeds.`
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		escapeXML(input)
+	}
+}
+
+func BenchmarkTruncateSummary(b *testing.B) {
+	input := strings.Repeat("This is a long summary. ", 50) // ~1200 chars
+	truncateFn := globalFuncMap["truncateSummary"].(func(string, db.Model) string)
+	m := db.ModelFull
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		truncateFn(input, m)
 	}
 }
