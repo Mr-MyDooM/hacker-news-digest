@@ -138,9 +138,11 @@ function setupArchiveHandlers() {
     $('#more-archive').click(function(e) {
         e.preventDefault();
         e.stopPropagation();
+        const $firstNew = $('.archive-item.hidden').first();
         $('.archive-item').removeClass('hidden');
         $('#archive-divider').remove();
         $(this).parent().remove();
+        $firstNew.find('a').focus();
     });
 }
 
