@@ -190,8 +190,8 @@
         {{if or $news.Summary $news.Image}}
         <div class="post-summary">
             {{if $news.Image}}
-            <button class="feature-image" aria-label="Zoom feature image">
-                <img src="{{$news.Image.URL}}" alt="feature image" loading="lazy">
+            <button class="feature-image" aria-label="Zoom feature image for {{cleanTitle $news.Title}}">
+                <img src="{{$news.Image.URL}}" alt="Feature image for {{cleanTitle $news.Title}}" loading="lazy">
             </button>
             {{end}}
             {{if $news.Summary}}
