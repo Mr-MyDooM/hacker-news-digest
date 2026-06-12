@@ -17,7 +17,39 @@ var (
 	openAIClient     *llm.OpenAIClient
 	geminiClient     *llm.GeminiClient
 	openRouterClient *llm.OpenAIClient
+
+	blockedPatterns []string
 )
+
+func init() {
+	blockedPatterns = []string{
+		"something went wrong",
+		"privacy related extensions",
+		"please disable them and try again",
+		"sign in to continue",
+		"log in to twitter",
+		"subscribe to continue reading",
+		"this content is for subscribers",
+		"access denied",
+		"please enable javascript",
+		"please enable js",
+		"javascript is required",
+		"requires javascript to",
+		"enable javascript",
+		"disable any ad blocker",
+		// YouTube footer fingerprint — page loaded but JS content missing
+		"aboutpresscopyrightcontact uscreators",
+		// WAF / CDN block pages
+		"forbidden",
+		"you don't have permission",
+		"access to this page is forbidden",
+		"i challenge thee",
+		"attention required",
+		"checking your browser",
+		"just a moment",
+		"ddos protection",
+	}
+}
 
 func Init(c *config.Config) {
 	cfg = c
@@ -164,36 +196,9 @@ func (n *News) PullContent() {
 
 // isBlockedContent detects login walls, JS-required pages, paywalls, WAF blocks, and error pages
 func isBlockedContent(content string) bool {
-	patterns := []string{
-		"Something went wrong",
-		"privacy related extensions",
-		"Please disable them and try again",
-		"Sign in to continue",
-		"Log in to Twitter",
-		"Subscribe to continue reading",
-		"This content is for subscribers",
-		"Access denied",
-		"Please enable JavaScript",
-		"Please enable JS",
-		"JavaScript is required",
-		"requires JavaScript to",
-		"enable javascript",
-		"disable any ad blocker",
-		// YouTube footer fingerprint — page loaded but JS content missing
-		"AboutPressCopyrightContact usCreators",
-		// WAF / CDN block pages
-		"forbidden",
-		"you don't have permission",
-		"access to this page is forbidden",
-		"i challenge thee",
-		"attention required",
-		"checking your browser",
-		"just a moment",
-		"ddos protection",
-	}
 	lower := strings.ToLower(content)
-	for _, p := range patterns {
-		if strings.Contains(lower, strings.ToLower(p)) {
+	for _, p := range blockedPatterns {
+		if strings.Contains(lower, p) {
 			return true
 		}
 	}
