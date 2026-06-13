@@ -156,9 +156,13 @@ function setupFilterHandlers() {
     });
 }
 
-function PreviewImage(src) {
-    $('#img-preview-modal img').attr('src', src);
-    $('#img-preview-modal').modal();
+function PreviewImage(src, title) {
+    const $modal = $('#img-preview-modal');
+    $modal.find('img').attr('src', src).attr('alt', title ? 'Full size feature image for ' + title : 'Full size preview');
+    if (title) {
+        $modal.find('#modal-title').text('Feature image for ' + title);
+    }
+    $modal.modal();
 }
 
 $(function() {
@@ -212,7 +216,8 @@ $.scrollUp({
 // Feature image modal
 $('.post-item .post-summary').on('click', '.feature-image', function(e) {
     var src = $(this).find('img').attr('src');
-    if (src) PreviewImage(src);
+    var title = $(this).closest('.post-item').find('.post-title a').text().trim();
+    if (src) PreviewImage(src, title);
     return false;
 });
 
