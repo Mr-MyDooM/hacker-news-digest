@@ -41,8 +41,16 @@ var globalFuncMap = template.FuncMap{
 		return n.Slug()
 	},
 	"truncateSummary": func(s string, m db.Model) string {
-		if m.CanTruncate() && len([]rune(s)) > 400 {
-			return string([]rune(s)[:400]) + " ..."
+		if !m.CanTruncate() {
+			return s
+		}
+		const maxRunes = 400
+		count := 0
+		for i := range s {
+			if count == maxRunes {
+				return s[:i] + " ..."
+			}
+			count++
 		}
 		return s
 	},
