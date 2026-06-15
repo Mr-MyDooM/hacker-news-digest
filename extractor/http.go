@@ -51,6 +51,9 @@ func GetSafeClient(timeout time.Duration) *http.Client {
 }
 
 func isRestrictedIP(ip net.IP) bool {
+	if ip == nil {
+		return true // Fail secure
+	}
 	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsInterfaceLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
 		return true
 	}
@@ -71,8 +74,43 @@ func isRestrictedIP(ip net.IP) bool {
 		if ipv4[0] == 100 && (ipv4[1] >= 64 && ipv4[1] <= 127) {
 			return true
 		}
-		// 198.18.0.0/15 (Benchmarking)
-		if ipv4[0] == 198 && (ipv4[1] == 18 || ipv4[1] == 19) {
+		// 192.0.0.0/24 (IETF), 192.0.2.0/24 (TEST-NET-1), 192.88.99.0/24 (6to4)
+		if ipv4[0] == 192 && (ipv4[1] == 0 && (ipv4[2] == 0 || ipv4[2] == 2) || (ipv4[1] == 88 && ipv4[2] == 99)) {
+			return true
+		}
+		// 198.18.0.0/15 (Benchmarking), 198.51.100.0/24 (TEST-NET-2)
+		if ipv4[0] == 198 && ((ipv4[1] == 18 || ipv4[1] == 19) || (ipv4[1] == 51 && ipv4[2] == 100)) {
+			return true
+		}
+		// 203.0.113.0/24 (TEST-NET-3)
+		if ipv4[0] == 203 && ipv4[1] == 0 && ipv4[2] == 113 {
+			return true
+		}
+		// 240.0.0.0/4 (Reserved)
+		if ipv4[0] >= 240 {
+			return true
+		}
+	} else if len(ip) == 16 {
+		// IPv6 specific checks
+		// 100::/64 (Discard-Only)
+		if ip[0] == 0x01 && ip[1] == 0x00 {
+			return true
+		}
+		// 64:ff9b::/96 (NAT64)
+		if ip[0] == 0x00 && ip[1] == 0x64 && ip[2] == 0xff && ip[3] == 0x9b {
+			allZero := true
+			for i := 4; i < 12; i++ {
+				if ip[i] != 0 {
+					allZero = false
+					break
+				}
+			}
+			if allZero {
+				return true
+			}
+		}
+		// 2001:10::/28 (ORCHID), 2001:20::/28 (ORCHIDv2)
+		if ip[0] == 0x20 && ip[1] == 0x01 && ip[2] == 0x00 && (ip[3]&0xf0 == 0x10 || ip[3]&0xf0 == 0x20) {
 			return true
 		}
 	}
