@@ -23,6 +23,15 @@ var (
 	tmplErr    error
 )
 
+// Performance: xmlEscaper is used for single-pass XML escaping.
+var xmlEscaper = strings.NewReplacer(
+	"&", "&amp;",
+	"<", "&lt;",
+	">", "&gt;",
+	"\"", "&quot;",
+	"'", "&apos;",
+)
+
 type PageData struct {
 	NewsList           []*hn.News
 	LastUpdated        time.Time
@@ -41,8 +50,16 @@ var globalFuncMap = template.FuncMap{
 		return n.Slug()
 	},
 	"truncateSummary": func(s string, m db.Model) string {
-		if m.CanTruncate() && len([]rune(s)) > 400 {
-			return string([]rune(s)[:400]) + " ..."
+		if !m.CanTruncate() {
+			return s
+		}
+		// Performance: avoid []rune conversion by using range to count characters
+		count := 0
+		for i := range s {
+			if count >= 400 {
+				return s[:i] + " ..."
+			}
+			count++
 		}
 		return s
 	},
@@ -200,12 +217,7 @@ func RenderFeed(newsList []*hn.News, siteURL string) string {
 }
 
 func escapeXML(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	s = strings.ReplaceAll(s, "\"", "&quot;")
-	s = strings.ReplaceAll(s, "'", "&apos;")
-	return s
+	return xmlEscaper.Replace(s)
 }
 
 type writeWrapper struct {
