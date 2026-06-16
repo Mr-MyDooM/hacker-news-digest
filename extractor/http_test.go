@@ -35,6 +35,29 @@ func TestIsRestrictedIP(t *testing.T) {
 		// Benchmarking (198.18.0.0/15)
 		{"198.18.0.1", true},
 		{"198.19.255.255", true},
+		// IETF Protocol Assignments (192.0.0.0/24)
+		{"192.0.0.1", true},
+		// TEST-NET-1 (192.0.2.0/24)
+		{"192.0.2.1", true},
+		// 6to4 Relay (192.88.99.0/24)
+		{"192.88.99.1", true},
+		// TEST-NET-2 (198.51.100.0/24)
+		{"198.51.100.1", true},
+		// TEST-NET-3 (203.0.113.0/24)
+		{"203.0.113.1", true},
+		// Reserved (240.0.0.0/4)
+		{"240.0.0.1", true},
+		{"255.255.255.255", true},
+
+		// IPv6 Discard-Only (100::/64)
+		{"100::1", true},
+		// IPv6 ORCHID (2001:10::/28)
+		{"2001:10::1", true},
+		// IPv6 ORCHIDv2 (2001:20::/28)
+		{"2001:20::1", true},
+		// IPv6 NAT64 (64:ff9b::/96)
+		{"64:ff9b::192.0.2.33", true},
+
 		// Public
 		{"8.8.8.8", false},
 		{"1.1.1.1", false},
