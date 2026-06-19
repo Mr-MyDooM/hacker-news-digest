@@ -41,8 +41,17 @@ var globalFuncMap = template.FuncMap{
 		return n.Slug()
 	},
 	"truncateSummary": func(s string, m db.Model) string {
-		if m.CanTruncate() && len([]rune(s)) > 400 {
-			return string([]rune(s)[:400]) + " ..."
+		if !m.CanTruncate() {
+			return s
+		}
+		// Performance: Using a range loop to find the truncation point avoids expensive []rune conversions
+		// and redundant memory allocations.
+		count := 0
+		for i := range s {
+			if count == 400 {
+				return s[:i] + " ..."
+			}
+			count++
 		}
 		return s
 	},
