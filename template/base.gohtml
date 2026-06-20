@@ -191,7 +191,7 @@
         <div class="post-summary">
             {{if $news.Image}}
             <button class="feature-image" aria-label="Zoom feature image">
-                <img src="{{$news.Image.URL}}" alt="feature image" loading="lazy">
+                <img src="{{$news.Image.URL}}" alt="Feature image for: {{cleanTitle $news.Title}}" loading="lazy">
             </button>
             {{end}}
             {{if $news.Summary}}
@@ -237,11 +237,12 @@
     </footer>
 </div>
 
-<div class="modal fade" id="img-preview-modal" tabindex="-1">
+<div class="modal fade" id="img-preview-modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+                <h4 class="modal-title" id="modal-title"></h4>
             </div>
             <div class="modal-body text-center">
                 <img id="modal-image" src="" alt="preview">
