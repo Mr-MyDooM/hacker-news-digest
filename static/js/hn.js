@@ -156,8 +156,10 @@ function setupFilterHandlers() {
     });
 }
 
-function PreviewImage(src) {
-    $('#img-preview-modal img').attr('src', src);
+function PreviewImage(src, title) {
+    var modalTitle = title || 'Image Preview';
+    $('#modal-title').text(modalTitle);
+    $('#modal-image').attr('src', src).attr('alt', modalTitle);
     $('#img-preview-modal').modal();
 }
 
@@ -212,7 +214,8 @@ $.scrollUp({
 // Feature image modal
 $('.post-item .post-summary').on('click', '.feature-image', function(e) {
     var src = $(this).find('img').attr('src');
-    if (src) PreviewImage(src);
+    var title = $(this).closest('.post-item').find('.post-title a').text().trim();
+    if (src) PreviewImage(src, title);
     return false;
 });
 
