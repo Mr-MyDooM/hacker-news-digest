@@ -1,6 +1,7 @@
 package template
 
 import (
+	"html/template"
 	"testing"
 )
 
@@ -27,5 +28,17 @@ func TestEscapeXML(t *testing.T) {
 		if got != tt.expected {
 			t.Errorf("escapeXML(%q) = %q, want %q", tt.input, got, tt.expected)
 		}
+	}
+}
+
+func TestHelpers(t *testing.T) {
+	cleanTitle := globalFuncMap["cleanTitle"].(func(string) string)
+	if got := cleanTitle("Show HN: Test"); got != "Test" {
+		t.Errorf("cleanTitle failed, got %q", got)
+	}
+
+	titleBadge := globalFuncMap["titleBadge"].(func(string) template.HTML)
+	if got := string(titleBadge("Show HN: Test")); got == "" {
+		t.Error("titleBadge failed to return badge")
 	}
 }
