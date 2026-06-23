@@ -2,7 +2,9 @@ package extractor
 
 import (
 	"net"
+	"net/http"
 	"testing"
+	"time"
 )
 
 func TestIsRestrictedIP(t *testing.T) {
@@ -32,9 +34,31 @@ func TestIsRestrictedIP(t *testing.T) {
 		// Carrier-grade NAT (100.64.0.0/10)
 		{"100.64.0.1", true},
 		{"100.127.255.255", true},
+		// IETF Protocol Assignments (192.0.0.0/24)
+		{"192.0.0.1", true},
+		// TEST-NET-1 (192.0.2.0/24)
+		{"192.0.2.1", true},
+		// 6to4 Relay (192.88.99.0/24)
+		{"192.88.99.1", true},
 		// Benchmarking (198.18.0.0/15)
 		{"198.18.0.1", true},
 		{"198.19.255.255", true},
+		// TEST-NET-2 (198.51.100.0/24)
+		{"198.51.100.1", true},
+		// TEST-NET-3 (203.0.113.0/24)
+		{"203.0.113.1", true},
+		// Reserved (240.0.0.0/4)
+		{"240.0.0.1", true},
+		{"255.255.255.255", true},
+		// Discard-Only Address Block (100::/64)
+		{"100::1", true},
+		// Documentation (2001:db8::/32)
+		{"2001:db8::1", true},
+		// ORCHIDv2 (2001:10::/28 and 2001:20::/28)
+		{"2001:10::1", true},
+		{"2001:20::1", true},
+		// Well-Known Prefix for NAT64 (64:ff9b::/96)
+		{"64:ff9b::1", true},
 		// Public
 		{"8.8.8.8", false},
 		{"1.1.1.1", false},
@@ -54,4 +78,41 @@ func TestIsRestrictedIP(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("nil IP", func(t *testing.T) {
+		if !isRestrictedIP(nil) {
+			t.Errorf("isRestrictedIP(nil) should be true (fail-secure)")
+		}
+	})
+}
+
+func TestGetSafeClientRedirect(t *testing.T) {
+	client := GetSafeClient(5 * time.Second)
+
+	t.Run("Max redirects", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "http://example.com", nil)
+		via := make([]*http.Request, 10)
+		err := client.CheckRedirect(req, via)
+		if err == nil {
+			t.Errorf("CheckRedirect should have failed at 10 redirects")
+		}
+	})
+
+	t.Run("Allowed scheme", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "https://example.com", nil)
+		via := []*http.Request{}
+		err := client.CheckRedirect(req, via)
+		if err != nil {
+			t.Errorf("CheckRedirect should have allowed https: %v", err)
+		}
+	})
+
+	t.Run("Disallowed scheme", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "ftp://example.com", nil)
+		via := []*http.Request{}
+		err := client.CheckRedirect(req, via)
+		if err == nil {
+			t.Errorf("CheckRedirect should have blocked ftp")
+		}
+	})
 }
