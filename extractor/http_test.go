@@ -2,7 +2,10 @@ package extractor
 
 import (
 	"net"
+	"net/http"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestIsRestrictedIP(t *testing.T) {
@@ -35,6 +38,24 @@ func TestIsRestrictedIP(t *testing.T) {
 		// Benchmarking (198.18.0.0/15)
 		{"198.18.0.1", true},
 		{"198.19.255.255", true},
+		// Documentation (IPv4)
+		{"192.0.2.1", true},
+		{"198.51.100.1", true},
+		{"203.0.113.1", true},
+		// Reserved (IPv4)
+		{"192.0.0.1", true},
+		{"192.88.99.1", true},
+		{"240.0.0.1", true},
+		{"255.255.255.255", true},
+		// ORCHID (IPv6)
+		{"2001:10::1", true},
+		{"2001:20::1", true},
+		// NAT64 (IPv6)
+		{"64:ff9b::1", true},
+		// Discard-Only (IPv6)
+		{"100::1", true},
+		// Documentation (IPv6)
+		{"2001:db8::1", true},
 		// Public
 		{"8.8.8.8", false},
 		{"1.1.1.1", false},
@@ -53,5 +74,32 @@ func TestIsRestrictedIP(t *testing.T) {
 				t.Errorf("isRestrictedIP(%s) = %v, want %v", tt.ip, got, tt.expected)
 			}
 		})
+	}
+}
+
+func TestGetSafeClientRedirect(t *testing.T) {
+	client := GetSafeClient(time.Second)
+	if client.CheckRedirect == nil {
+		t.Fatal("CheckRedirect is nil")
+	}
+
+	// Test 10 redirects limit
+	via := make([]*http.Request, 10)
+	err := client.CheckRedirect(&http.Request{}, via)
+	if err == nil || !strings.Contains(err.Error(), "10 redirects") {
+		t.Errorf("expected error for 10 redirects, got %v", err)
+	}
+
+	// Test protocol restriction
+	req, _ := http.NewRequest("GET", "ftp://example.com", nil)
+	err = client.CheckRedirect(req, nil)
+	if err == nil || !strings.Contains(err.Error(), "restricted protocol") {
+		t.Errorf("expected error for ftp protocol, got %v", err)
+	}
+
+	req, _ = http.NewRequest("GET", "https://example.com", nil)
+	err = client.CheckRedirect(req, nil)
+	if err != nil {
+		t.Errorf("unexpected error for https: %v", err)
 	}
 }
