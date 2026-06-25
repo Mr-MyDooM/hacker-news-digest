@@ -9,6 +9,8 @@ import (
 )
 
 var (
+	restrictedNets []*net.IPNet
+
 	safeDialer = &net.Dialer{
 		Timeout:   30 * time.Second,
 		KeepAlive: 30 * time.Second,
@@ -47,10 +49,50 @@ func GetSafeClient(timeout time.Duration) *http.Client {
 	return &http.Client{
 		Transport: safeTransport,
 		Timeout:   timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return fmt.Errorf("stopped after 10 redirects")
+			}
+			if req.URL.Scheme != "http" && req.URL.Scheme != "https" {
+				return fmt.Errorf("restricted protocol: %s", req.URL.Scheme)
+			}
+			return nil
+		},
+	}
+}
+
+func init() {
+	restrictedCIDRs := []string{
+		"0.0.0.0/8",       // Local network
+		"100.64.0.0/10",   // Carrier-grade NAT
+		"192.0.0.0/24",    // IETF Protocol Assignments
+		"192.0.2.0/24",    // TEST-NET-1
+		"192.88.99.0/24",  // 6to4 Relay
+		"198.18.0.0/15",   // Benchmarking
+		"198.51.100.0/24", // TEST-NET-2
+		"203.0.113.0/24",  // TEST-NET-3
+		"240.0.0.0/4",     // Reserved
+		"2001:db8::/32",   // Documentation
+		"2001:10::/28",    // ORCHIDv1
+		"2001:20::/28",    // ORCHIDv2
+		"64:ff9b::/96",    // NAT64
+		"100::/64",        // Discard-Only
+	}
+
+	for _, cidr := range restrictedCIDRs {
+		_, block, err := net.ParseCIDR(cidr)
+		if err != nil {
+			panic(fmt.Sprintf("failed to parse CIDR %s: %v", cidr, err))
+		}
+		restrictedNets = append(restrictedNets, block)
 	}
 }
 
 func isRestrictedIP(ip net.IP) bool {
+	if ip == nil {
+		return true // Fail-secure
+	}
+
 	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsInterfaceLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
 		return true
 	}
@@ -60,19 +102,8 @@ func isRestrictedIP(ip net.IP) bool {
 		return true
 	}
 
-	// Defense-in-depth: explicitly block additional restricted IPv4 ranges
-	ipv4 := ip.To4()
-	if ipv4 != nil {
-		// 0.0.0.0/8 (Local network)
-		if ipv4[0] == 0 {
-			return true
-		}
-		// 100.64.0.0/10 (Carrier-grade NAT)
-		if ipv4[0] == 100 && (ipv4[1] >= 64 && ipv4[1] <= 127) {
-			return true
-		}
-		// 198.18.0.0/15 (Benchmarking)
-		if ipv4[0] == 198 && (ipv4[1] == 18 || ipv4[1] == 19) {
+	for _, block := range restrictedNets {
+		if block.Contains(ip) {
 			return true
 		}
 	}
