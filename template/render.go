@@ -21,6 +21,15 @@ var (
 	cachedTmpl *template.Template
 	tmplOnce   sync.Once
 	tmplErr    error
+
+	// Performance: xmlReplacer is pre-compiled to avoid multiple strings.ReplaceAll calls and allocations.
+	xmlReplacer = strings.NewReplacer(
+		"&", "&amp;",
+		"<", "&lt;",
+		">", "&gt;",
+		"\"", "&quot;",
+		"'", "&apos;",
+	)
 )
 
 type PageData struct {
@@ -41,8 +50,16 @@ var globalFuncMap = template.FuncMap{
 		return n.Slug()
 	},
 	"truncateSummary": func(s string, m db.Model) string {
-		if m.CanTruncate() && len([]rune(s)) > 400 {
-			return string([]rune(s)[:400]) + " ..."
+		if !m.CanTruncate() {
+			return s
+		}
+		// Performance: Iterating over the string via range avoids O(N) allocation of []rune(s).
+		count := 0
+		for i := range s {
+			count++
+			if count > 400 {
+				return s[:i] + " ..."
+			}
 		}
 		return s
 	},
@@ -200,12 +217,7 @@ func RenderFeed(newsList []*hn.News, siteURL string) string {
 }
 
 func escapeXML(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	s = strings.ReplaceAll(s, "\"", "&quot;")
-	s = strings.ReplaceAll(s, "'", "&apos;")
-	return s
+	return xmlReplacer.Replace(s)
 }
 
 type writeWrapper struct {
