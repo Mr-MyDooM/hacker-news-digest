@@ -1,7 +1,10 @@
 package template
 
 import (
+	"strings"
 	"testing"
+
+	"github.com/mj/hacker-news-digest/db"
 )
 
 func TestEscapeXML(t *testing.T) {
@@ -27,5 +30,50 @@ func TestEscapeXML(t *testing.T) {
 		if got != tt.expected {
 			t.Errorf("escapeXML(%q) = %q, want %q", tt.input, got, tt.expected)
 		}
+	}
+}
+
+func TestTruncateSummary(t *testing.T) {
+	truncateFunc := globalFuncMap["truncateSummary"].(func(string, db.Model) string)
+
+	tests := []struct {
+		name     string
+		input    string
+		model    db.Model
+		expected string
+	}{
+		{
+			"Short summary",
+			"Short summary",
+			db.ModelFull,
+			"Short summary",
+		},
+		{
+			"Long summary",
+			strings.Repeat("a", 401),
+			db.ModelFull,
+			strings.Repeat("a", 400) + " ...",
+		},
+		{
+			"Unicode summary",
+			strings.Repeat("你", 401),
+			db.ModelFull,
+			strings.Repeat("你", 400) + " ...",
+		},
+		{
+			"Non-truncatable model",
+			strings.Repeat("a", 401),
+			db.ModelOpenAI,
+			strings.Repeat("a", 401),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := truncateFunc(tt.input, tt.model)
+			if got != tt.expected {
+				t.Errorf("truncateSummary() = %q, want %q", got, tt.expected)
+			}
+		})
 	}
 }
