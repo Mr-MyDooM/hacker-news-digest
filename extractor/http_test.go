@@ -32,9 +32,30 @@ func TestIsRestrictedIP(t *testing.T) {
 		// Carrier-grade NAT (100.64.0.0/10)
 		{"100.64.0.1", true},
 		{"100.127.255.255", true},
+		// IETF Protocol Assignments
+		{"192.0.0.1", true},
+		// TEST-NET
+		{"192.0.2.1", true},
+		{"198.51.100.1", true},
+		{"203.0.113.1", true},
+		// 6to4 Relay
+		{"192.88.99.1", true},
 		// Benchmarking (198.18.0.0/15)
 		{"198.18.0.1", true},
 		{"198.19.255.255", true},
+		// Reserved / Multicast IPv4
+		{"240.0.0.1", true},
+		{"255.255.255.255", true},
+
+		// IPv6 special ranges
+		{"64:ff9b::1", true},      // NAT64
+		{"100::1", true},          // Discard-Only
+		{"2001:10::1", true},      // ORCHIDv2
+		{"2001:20::1", true},      // ORCHIDv2
+		{"2001:db8::1", true},     // Documentation
+		{"fc00::1", true},         // Unique-Local
+		{"ff00::1", true},         // Multicast
+
 		// Public
 		{"8.8.8.8", false},
 		{"1.1.1.1", false},
@@ -54,4 +75,10 @@ func TestIsRestrictedIP(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("nil IP", func(t *testing.T) {
+		if !isRestrictedIP(nil) {
+			t.Error("isRestrictedIP(nil) should be true")
+		}
+	})
 }
