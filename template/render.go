@@ -35,6 +35,14 @@ type PageData struct {
 	DisableTranslation bool
 }
 
+var xmlReplacer = strings.NewReplacer(
+	"&", "&amp;",
+	"<", "&lt;",
+	">", "&gt;",
+	"\"", "&quot;",
+	"'", "&apos;",
+)
+
 // Performance: globalFuncMap is defined at package level to avoid redundant allocations on every Render call.
 var globalFuncMap = template.FuncMap{
 	"slug": func(n *hn.News) string {
@@ -200,12 +208,7 @@ func RenderFeed(newsList []*hn.News, siteURL string) string {
 }
 
 func escapeXML(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	s = strings.ReplaceAll(s, "\"", "&quot;")
-	s = strings.ReplaceAll(s, "'", "&apos;")
-	return s
+	return xmlReplacer.Replace(s)
 }
 
 type writeWrapper struct {
