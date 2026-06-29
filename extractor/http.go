@@ -9,6 +9,8 @@ import (
 )
 
 var (
+	restrictedCIDRs []*net.IPNet
+
 	safeDialer = &net.Dialer{
 		Timeout:   30 * time.Second,
 		KeepAlive: 30 * time.Second,
@@ -40,39 +42,76 @@ var (
 	}
 )
 
+func init() {
+	// Comprehensive list of restricted CIDR blocks for SSRF protection.
+	cidrs := []string{
+		// IPv4
+		"0.0.0.0/8",      // Local network
+		"100.64.0.0/10",  // Carrier-grade NAT
+		"192.0.0.0/24",   // IETF Protocol Assignments
+		"192.0.2.0/24",   // TEST-NET-1
+		"192.88.99.0/24", // 6to4 Relay
+		"198.18.0.0/15",  // Benchmarking
+		"198.51.100.0/24", // TEST-NET-2
+		"203.0.113.0/24", // TEST-NET-3
+		"240.0.0.0/4",    // Reserved
+		"255.255.255.255/32", // Limited Broadcast
+
+		// IPv6
+		"64:ff9b::/96",    // NAT64
+		"100::/64",        // Discard-Only
+		"2001:db8::/32",   // Documentation
+		"2001:10::/28",    // ORCHID
+		"2001:20::/28",    // ORCHIDv2
+	}
+
+	for _, s := range cidrs {
+		_, n, err := net.ParseCIDR(s)
+		if err != nil {
+			panic(fmt.Sprintf("failed to parse restricted CIDR %s: %v", s, err))
+		}
+		restrictedCIDRs = append(restrictedCIDRs, n)
+	}
+}
+
 // GetSafeClient returns an http.Client with SSRF protection.
-// It blocks requests to loopback, private, and link-local IP addresses.
-// It reuses a shared transport to enable connection pooling.
+// It blocks requests to loopback, private, and restricted IP addresses.
+// It enforces a redirect limit and restricts protocols to http/https.
 func GetSafeClient(timeout time.Duration) *http.Client {
 	return &http.Client{
 		Transport: safeTransport,
 		Timeout:   timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return fmt.Errorf("stopped after 10 redirects")
+			}
+			// Security: only allow http and https protocols
+			if req.URL.Scheme != "http" && req.URL.Scheme != "https" {
+				return fmt.Errorf("disallowed redirect protocol: %s", req.URL.Scheme)
+			}
+			return nil
+		},
 	}
 }
 
 func isRestrictedIP(ip net.IP) bool {
+	if ip == nil {
+		return true // Fail-secure
+	}
+
 	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsInterfaceLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
 		return true
 	}
+
 	// IsPrivate reports whether ip is a private address, according to
 	// RFC 1918 (IPv4 addresses) and RFC 4193 (IPv6 addresses).
 	if ip.IsPrivate() {
 		return true
 	}
 
-	// Defense-in-depth: explicitly block additional restricted IPv4 ranges
-	ipv4 := ip.To4()
-	if ipv4 != nil {
-		// 0.0.0.0/8 (Local network)
-		if ipv4[0] == 0 {
-			return true
-		}
-		// 100.64.0.0/10 (Carrier-grade NAT)
-		if ipv4[0] == 100 && (ipv4[1] >= 64 && ipv4[1] <= 127) {
-			return true
-		}
-		// 198.18.0.0/15 (Benchmarking)
-		if ipv4[0] == 198 && (ipv4[1] == 18 || ipv4[1] == 19) {
+	// Defense-in-depth: check against pre-parsed restricted CIDR blocks
+	for _, n := range restrictedCIDRs {
+		if n.Contains(ip) {
 			return true
 		}
 	}
