@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/mj/hacker-news-digest/config"
 	"github.com/mj/hacker-news-digest/db"
@@ -21,6 +22,14 @@ var (
 	cachedTmpl *template.Template
 	tmplOnce   sync.Once
 	tmplErr    error
+
+	xmlReplacer = strings.NewReplacer(
+		"&", "&amp;",
+		"<", "&lt;",
+		">", "&gt;",
+		"\"", "&quot;",
+		"'", "&apos;",
+	)
 )
 
 type PageData struct {
@@ -41,8 +50,27 @@ var globalFuncMap = template.FuncMap{
 		return n.Slug()
 	},
 	"truncateSummary": func(s string, m db.Model) string {
-		if m.CanTruncate() && len([]rune(s)) > 400 {
-			return string([]rune(s)[:400]) + " ..."
+		if !m.CanTruncate() {
+			return s
+		}
+		const maxLen = 400
+		// Performance: truncate by finding the byte offset of the maxLen-th rune.
+		// This avoids expensive []rune(s) allocation.
+		if len(s) <= maxLen { // Fast path for ASCII
+			return s
+		}
+		count := 0
+		byteIdx := 0
+		for byteIdx < len(s) {
+			_, size := utf8.DecodeRuneInString(s[byteIdx:])
+			byteIdx += size
+			count++
+			if count == maxLen {
+				if byteIdx < len(s) {
+					return s[:byteIdx] + " ..."
+				}
+				return s
+			}
 		}
 		return s
 	},
@@ -200,12 +228,7 @@ func RenderFeed(newsList []*hn.News, siteURL string) string {
 }
 
 func escapeXML(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	s = strings.ReplaceAll(s, "\"", "&quot;")
-	s = strings.ReplaceAll(s, "'", "&apos;")
-	return s
+	return xmlReplacer.Replace(s)
 }
 
 type writeWrapper struct {
