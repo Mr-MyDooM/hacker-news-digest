@@ -29,3 +29,22 @@ func TestEscapeXML(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkEscapeXML(b *testing.B) {
+	input := "This is a \"test\" & it has <some> 'tags'."
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		escapeXML(input)
+	}
+}
+
+func BenchmarkEscapeXMLLong(b *testing.B) {
+	input := "This is a \"test\" & it has <some> 'tags'. "
+	for i := 0; i < 10; i++ {
+		input += input
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		escapeXML(input)
+	}
+}
