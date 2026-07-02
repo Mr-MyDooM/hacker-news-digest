@@ -9,6 +9,8 @@ import (
 )
 
 var (
+	restrictedNetworks []*net.IPNet
+
 	safeDialer = &net.Dialer{
 		Timeout:   30 * time.Second,
 		KeepAlive: 30 * time.Second,
@@ -40,6 +42,21 @@ var (
 	}
 )
 
+func init() {
+	cidrs := []string{
+		"192.0.0.0/24", "192.0.2.0/24", "192.88.99.0/24", "198.51.100.0/24",
+		"203.0.113.0/24", "240.0.0.0/4", "100.64.0.0/10", "198.18.0.0/15",
+		"2001:10::/28", "2001:20::/28", "64:ff9b::/96", "100::/64",
+	}
+	for _, cidr := range cidrs {
+		_, n, err := net.ParseCIDR(cidr)
+		if err != nil {
+			panic(err)
+		}
+		restrictedNetworks = append(restrictedNetworks, n)
+	}
+}
+
 // GetSafeClient returns an http.Client with SSRF protection.
 // It blocks requests to loopback, private, and link-local IP addresses.
 // It reuses a shared transport to enable connection pooling.
@@ -47,10 +64,22 @@ func GetSafeClient(timeout time.Duration) *http.Client {
 	return &http.Client{
 		Transport: safeTransport,
 		Timeout:   timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return fmt.Errorf("too many redirects")
+			}
+			if req.URL.Scheme != "http" && req.URL.Scheme != "https" {
+				return fmt.Errorf("invalid protocol: %s", req.URL.Scheme)
+			}
+			return nil
+		},
 	}
 }
 
 func isRestrictedIP(ip net.IP) bool {
+	if ip == nil {
+		return true // Fail secure
+	}
 	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsInterfaceLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
 		return true
 	}
@@ -60,19 +89,14 @@ func isRestrictedIP(ip net.IP) bool {
 		return true
 	}
 
-	// Defense-in-depth: explicitly block additional restricted IPv4 ranges
+	// Defense-in-depth: explicitly block additional restricted IP ranges
 	ipv4 := ip.To4()
-	if ipv4 != nil {
-		// 0.0.0.0/8 (Local network)
-		if ipv4[0] == 0 {
-			return true
-		}
-		// 100.64.0.0/10 (Carrier-grade NAT)
-		if ipv4[0] == 100 && (ipv4[1] >= 64 && ipv4[1] <= 127) {
-			return true
-		}
-		// 198.18.0.0/15 (Benchmarking)
-		if ipv4[0] == 198 && (ipv4[1] == 18 || ipv4[1] == 19) {
+	if ipv4 != nil && ipv4[0] == 0 { // 0.0.0.0/8 (Local network)
+		return true
+	}
+
+	for _, n := range restrictedNetworks {
+		if n.Contains(ip) {
 			return true
 		}
 	}
