@@ -888,7 +888,10 @@ body::before {
 #theme-toggle:focus-visible,
 #search-toggle:focus-visible,
 .navbar-toggle:focus-visible,
-.summary-toggle:focus-visible {
+.summary-toggle:focus-visible,
+#search-close:focus-visible,
+#search-clear-btn:focus-visible,
+#more-archive:focus-visible {
     outline: 2px solid var(--neon);
     outline-offset: 2px;
     border-radius: 2px;
