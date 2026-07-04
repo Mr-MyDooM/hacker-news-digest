@@ -93,7 +93,7 @@
                 <li><a href="/">Front</a></li>
                 <li><a href="/daily/{{if .DailyLinks}}{{(index .DailyLinks 0)}}{{end}}/">Past</a></li>
                 <li class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Archive <span class="caret"></span></a>
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Archive <span class="caret"></span></a>
                     <ul class="dropdown-menu" role="menu">
                         {{range $i, $link := .DailyLinks}}
                             <li {{if ge $i 10}}class="archive-item hidden"{{end}}><a href="/daily/{{$link}}/">{{$link}}</a></li>
@@ -105,7 +105,7 @@
                     </ul>
                 </li>
                 <li class="dropdown sort-dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Sort <span class="caret"></span></a>
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Sort <span class="caret"></span></a>
                     <ul class="dropdown-menu" role="menu">
                         <li><a href="#" data-sort="rank">HN Rank</a></li>
                         <li><a href="#" data-sort="score">Points</a></li>
@@ -114,7 +114,7 @@
                     </ul>
                 </li>
                 <li class="dropdown filter-dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Filter <span class="caret"></span></a>
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Filter <span class="caret"></span></a>
                     <ul class="dropdown-menu" role="menu">
                         <li><a href="#" data-filter="10">Top 10</a></li>
                         <li><a href="#" data-filter="20">Top 20</a></li>
@@ -237,11 +237,12 @@
     </footer>
 </div>
 
-<div class="modal fade" id="img-preview-modal" tabindex="-1">
+<div class="modal fade" id="img-preview-modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+                <h4 id="modal-title" class="sr-only">Image Preview</h4>
             </div>
             <div class="modal-body text-center">
                 <img id="modal-image" src="" alt="preview">
