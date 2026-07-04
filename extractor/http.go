@@ -38,7 +38,35 @@ var (
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}
+
+	restrictedNetworks []*net.IPNet
 )
+
+func init() {
+	// Pre-parse additional restricted CIDR blocks for faster lookup in isRestrictedIP.
+	cidrs := []string{
+		"0.0.0.0/8",       // Local network
+		"100.64.0.0/10",   // Carrier-grade NAT
+		"192.0.0.0/24",    // IETF Protocol Assignments
+		"192.0.2.0/24",    // TEST-NET-1
+		"198.18.0.0/15",   // Benchmarking
+		"198.51.100.0/24", // TEST-NET-2
+		"203.0.113.0/24",  // TEST-NET-3
+		"240.0.0.0/4",     // Reserved
+		"100::/64",        // Discard-Only Address Block
+		"2001:10::/28",    // ORCHID
+		"2001:20::/28",    // ORCHIDv2
+		"2001:db8::/32",   // Documentation
+		"64:ff9b::/96",    // Well-Known Prefix for NAT64
+	}
+	for _, cidr := range cidrs {
+		_, block, err := net.ParseCIDR(cidr)
+		if err != nil {
+			panic(fmt.Sprintf("failed to parse restricted CIDR %s: %v", cidr, err))
+		}
+		restrictedNetworks = append(restrictedNetworks, block)
+	}
+}
 
 // GetSafeClient returns an http.Client with SSRF protection.
 // It blocks requests to loopback, private, and link-local IP addresses.
@@ -51,6 +79,9 @@ func GetSafeClient(timeout time.Duration) *http.Client {
 }
 
 func isRestrictedIP(ip net.IP) bool {
+	if ip == nil {
+		return true // Fail secure
+	}
 	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsInterfaceLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
 		return true
 	}
@@ -60,19 +91,9 @@ func isRestrictedIP(ip net.IP) bool {
 		return true
 	}
 
-	// Defense-in-depth: explicitly block additional restricted IPv4 ranges
-	ipv4 := ip.To4()
-	if ipv4 != nil {
-		// 0.0.0.0/8 (Local network)
-		if ipv4[0] == 0 {
-			return true
-		}
-		// 100.64.0.0/10 (Carrier-grade NAT)
-		if ipv4[0] == 100 && (ipv4[1] >= 64 && ipv4[1] <= 127) {
-			return true
-		}
-		// 198.18.0.0/15 (Benchmarking)
-		if ipv4[0] == 198 && (ipv4[1] == 18 || ipv4[1] == 19) {
+	// Defense-in-depth: check against pre-parsed restricted networks
+	for _, network := range restrictedNetworks {
+		if network.Contains(ip) {
 			return true
 		}
 	}
