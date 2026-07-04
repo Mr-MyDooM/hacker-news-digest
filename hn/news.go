@@ -17,7 +17,44 @@ var (
 	openAIClient     *llm.OpenAIClient
 	geminiClient     *llm.GeminiClient
 	openRouterClient *llm.OpenAIClient
+
+	// Performance: pre-lowercased patterns for isBlockedContent to avoid allocations in loops.
+	blockedPatterns []string
 )
+
+func init() {
+	patterns := []string{
+		"Something went wrong",
+		"privacy related extensions",
+		"Please disable them and try again",
+		"Sign in to continue",
+		"Log in to Twitter",
+		"Subscribe to continue reading",
+		"This content is for subscribers",
+		"Access denied",
+		"Please enable JavaScript",
+		"Please enable JS",
+		"JavaScript is required",
+		"requires JavaScript to",
+		"enable javascript",
+		"disable any ad blocker",
+		// YouTube footer fingerprint — page loaded but JS content missing
+		"AboutPressCopyrightContact usCreators",
+		// WAF / CDN block pages
+		"forbidden",
+		"you don't have permission",
+		"access to this page is forbidden",
+		"i challenge thee",
+		"attention required",
+		"checking your browser",
+		"just a moment",
+		"ddos protection",
+	}
+	blockedPatterns = make([]string, len(patterns))
+	for i, p := range patterns {
+		blockedPatterns[i] = strings.ToLower(p)
+	}
+}
 
 func Init(c *config.Config) {
 	cfg = c
@@ -162,38 +199,12 @@ func (n *News) PullContent() {
 	n.Summarize(n.Content)
 }
 
-// isBlockedContent detects login walls, JS-required pages, paywalls, WAF blocks, and error pages
+// isBlockedContent detects login walls, JS-required pages, paywalls, WAF blocks, and error pages.
+// Performance: Uses pre-lowercased blockedPatterns to avoid repeated allocations.
 func isBlockedContent(content string) bool {
-	patterns := []string{
-		"Something went wrong",
-		"privacy related extensions",
-		"Please disable them and try again",
-		"Sign in to continue",
-		"Log in to Twitter",
-		"Subscribe to continue reading",
-		"This content is for subscribers",
-		"Access denied",
-		"Please enable JavaScript",
-		"Please enable JS",
-		"JavaScript is required",
-		"requires JavaScript to",
-		"enable javascript",
-		"disable any ad blocker",
-		// YouTube footer fingerprint — page loaded but JS content missing
-		"AboutPressCopyrightContact usCreators",
-		// WAF / CDN block pages
-		"forbidden",
-		"you don't have permission",
-		"access to this page is forbidden",
-		"i challenge thee",
-		"attention required",
-		"checking your browser",
-		"just a moment",
-		"ddos protection",
-	}
 	lower := strings.ToLower(content)
-	for _, p := range patterns {
-		if strings.Contains(lower, strings.ToLower(p)) {
+	for _, p := range blockedPatterns {
+		if strings.Contains(lower, p) {
 			return true
 		}
 	}
