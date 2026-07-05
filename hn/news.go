@@ -5,6 +5,7 @@ import (
 	"log"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/mj/hacker-news-digest/config"
 	"github.com/mj/hacker-news-digest/db"
@@ -18,6 +19,40 @@ var (
 	geminiClient     *llm.GeminiClient
 	openRouterClient *llm.OpenAIClient
 )
+
+var blockedPatterns = []string{
+	"Something went wrong",
+	"privacy related extensions",
+	"Please disable them and try again",
+	"Sign in to continue",
+	"Log in to Twitter",
+	"Subscribe to continue reading",
+	"This content is for subscribers",
+	"Access denied",
+	"Please enable JavaScript",
+	"Please enable JS",
+	"JavaScript is required",
+	"requires JavaScript to",
+	"enable javascript",
+	"disable any ad blocker",
+	// YouTube footer fingerprint — page loaded but JS content missing
+	"AboutPressCopyrightContact usCreators",
+	// WAF / CDN block pages
+	"forbidden",
+	"you don't have permission",
+	"access to this page is forbidden",
+	"i challenge thee",
+	"attention required",
+	"checking your browser",
+	"just a moment",
+	"ddos protection",
+}
+
+func init() {
+	for i, p := range blockedPatterns {
+		blockedPatterns[i] = strings.ToLower(p)
+	}
+}
 
 func Init(c *config.Config) {
 	cfg = c
@@ -164,36 +199,9 @@ func (n *News) PullContent() {
 
 // isBlockedContent detects login walls, JS-required pages, paywalls, WAF blocks, and error pages
 func isBlockedContent(content string) bool {
-	patterns := []string{
-		"Something went wrong",
-		"privacy related extensions",
-		"Please disable them and try again",
-		"Sign in to continue",
-		"Log in to Twitter",
-		"Subscribe to continue reading",
-		"This content is for subscribers",
-		"Access denied",
-		"Please enable JavaScript",
-		"Please enable JS",
-		"JavaScript is required",
-		"requires JavaScript to",
-		"enable javascript",
-		"disable any ad blocker",
-		// YouTube footer fingerprint — page loaded but JS content missing
-		"AboutPressCopyrightContact usCreators",
-		// WAF / CDN block pages
-		"forbidden",
-		"you don't have permission",
-		"access to this page is forbidden",
-		"i challenge thee",
-		"attention required",
-		"checking your browser",
-		"just a moment",
-		"ddos protection",
-	}
 	lower := strings.ToLower(content)
-	for _, p := range patterns {
-		if strings.Contains(lower, strings.ToLower(p)) {
+	for _, p := range blockedPatterns {
+		if strings.Contains(lower, p) {
 			return true
 		}
 	}
@@ -266,7 +274,7 @@ func isGarbageSummary(summary string) bool {
 
 func (n *News) Summarize(content string) {
 	// Short content doesn't need LLM summarization.
-	if len([]rune(content)) <= cfg.SummarySize {
+	if utf8.RuneCountInString(content) <= cfg.SummarySize {
 		n.Summary = content
 		n.SummarizedBy = db.ModelPrefix
 		db.PutSummary(&db.Summary{URL: n.URL, Summary: content, Model: db.ModelPrefix})
@@ -405,11 +413,18 @@ func saveImageToCache(n *News) {
 }
 
 func prefixSummary(content string, maxLen int) string {
-	runes := []rune(strings.TrimSpace(content))
-	if len(runes) <= maxLen {
-		return string(runes)
+	s := strings.TrimSpace(content)
+	if utf8.RuneCountInString(s) <= maxLen {
+		return s
 	}
-	return string(runes[:maxLen]) + " ..."
+	count := 0
+	for i := range s {
+		if count == maxLen {
+			return s[:i] + " ..."
+		}
+		count++
+	}
+	return s
 }
 
 func (n *News) TranslateSummary() {
