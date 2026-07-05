@@ -170,6 +170,13 @@ $(function() {
     updateDropdownActive($('.sort-dropdown'), 'rank', 'sort');
     updateDropdownActive($('.filter-dropdown'), 'all', 'filter');
 
+    // Toggle aria-expanded on dropdown open/close
+    $('.dropdown').on('show.bs.dropdown', function() {
+        $(this).find('.dropdown-toggle').attr('aria-expanded', 'true');
+    }).on('hide.bs.dropdown', function() {
+        $(this).find('.dropdown-toggle').attr('aria-expanded', 'false');
+    });
+
     // Restore state from URL hash
     const urlParams = new URLSearchParams(window.location.hash.substring(1));
 
