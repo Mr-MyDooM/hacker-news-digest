@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/mj/hacker-news-digest/config"
 	"github.com/mj/hacker-news-digest/db"
@@ -21,6 +22,14 @@ var (
 	cachedTmpl *template.Template
 	tmplOnce   sync.Once
 	tmplErr    error
+)
+
+var xmlReplacer = strings.NewReplacer(
+	"&", "&amp;",
+	"<", "&lt;",
+	">", "&gt;",
+	"\"", "&quot;",
+	"'", "&apos;",
 )
 
 type PageData struct {
@@ -41,8 +50,14 @@ var globalFuncMap = template.FuncMap{
 		return n.Slug()
 	},
 	"truncateSummary": func(s string, m db.Model) string {
-		if m.CanTruncate() && len([]rune(s)) > 400 {
-			return string([]rune(s)[:400]) + " ..."
+		if m.CanTruncate() && utf8.RuneCountInString(s) > 400 {
+			count := 0
+			for i := range s {
+				if count == 400 {
+					return s[:i] + " ..."
+				}
+				count++
+			}
 		}
 		return s
 	},
@@ -200,12 +215,7 @@ func RenderFeed(newsList []*hn.News, siteURL string) string {
 }
 
 func escapeXML(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	s = strings.ReplaceAll(s, "\"", "&quot;")
-	s = strings.ReplaceAll(s, "'", "&apos;")
-	return s
+	return xmlReplacer.Replace(s)
 }
 
 type writeWrapper struct {
