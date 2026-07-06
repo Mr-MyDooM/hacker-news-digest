@@ -38,7 +38,33 @@ var (
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}
+
+	restrictedNetworks []*net.IPNet
 )
+
+func init() {
+	cidrs := []string{
+		"0.0.0.0/8",          // Local network
+		"100.64.0.0/10",      // Shared Address Space (CGNAT)
+		"192.0.0.0/24",       // IETF Protocol Assignments
+		"192.0.2.0/24",       // Documentation (TEST-NET-1)
+		"198.18.0.0/15",      // Benchmarking
+		"198.51.100.0/24",    // Documentation (TEST-NET-2)
+		"203.0.113.0/24",     // Documentation (TEST-NET-3)
+		"240.0.0.0/4",        // Reserved
+		"255.255.255.255/32", // Limited Broadcast
+		"2001:10::/28",       // ORCHID
+		"2001:20::/28",       // ORCHIDv2
+		"2001:db8::/32",      // Documentation (IPv6)
+	}
+	for _, cidr := range cidrs {
+		_, network, err := net.ParseCIDR(cidr)
+		if err != nil {
+			panic(fmt.Sprintf("failed to parse CIDR %s: %v", cidr, err))
+		}
+		restrictedNetworks = append(restrictedNetworks, network)
+	}
+}
 
 // GetSafeClient returns an http.Client with SSRF protection.
 // It blocks requests to loopback, private, and link-local IP addresses.
@@ -51,6 +77,9 @@ func GetSafeClient(timeout time.Duration) *http.Client {
 }
 
 func isRestrictedIP(ip net.IP) bool {
+	if ip == nil {
+		return true // Fail secure
+	}
 	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsInterfaceLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
 		return true
 	}
@@ -60,19 +89,8 @@ func isRestrictedIP(ip net.IP) bool {
 		return true
 	}
 
-	// Defense-in-depth: explicitly block additional restricted IPv4 ranges
-	ipv4 := ip.To4()
-	if ipv4 != nil {
-		// 0.0.0.0/8 (Local network)
-		if ipv4[0] == 0 {
-			return true
-		}
-		// 100.64.0.0/10 (Carrier-grade NAT)
-		if ipv4[0] == 100 && (ipv4[1] >= 64 && ipv4[1] <= 127) {
-			return true
-		}
-		// 198.18.0.0/15 (Benchmarking)
-		if ipv4[0] == 198 && (ipv4[1] == 18 || ipv4[1] == 19) {
+	for _, network := range restrictedNetworks {
+		if network.Contains(ip) {
 			return true
 		}
 	}
