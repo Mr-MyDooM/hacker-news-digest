@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/mj/hacker-news-digest/config"
 	"github.com/mj/hacker-news-digest/db"
@@ -41,8 +42,16 @@ var globalFuncMap = template.FuncMap{
 		return n.Slug()
 	},
 	"truncateSummary": func(s string, m db.Model) string {
-		if m.CanTruncate() && len([]rune(s)) > 400 {
-			return string([]rune(s)[:400]) + " ..."
+		// Performance: Using utf8.RuneCountInString and range loop to find byte offset
+		// avoids expensive []rune(s) heap allocation.
+		if m.CanTruncate() && utf8.RuneCountInString(s) > 400 {
+			count := 0
+			for i := range s {
+				if count == 400 {
+					return s[:i] + " ..."
+				}
+				count++
+			}
 		}
 		return s
 	},

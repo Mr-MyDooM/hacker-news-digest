@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/mj/hacker-news-digest/db"
 	"github.com/mj/hacker-news-digest/extractor"
@@ -145,9 +146,17 @@ func (c *OpenAIClient) call(req chatRequest) (string, error) {
 }
 
 func truncateContent(content string, maxRunes int) string {
-	runes := []rune(content)
-	if len(runes) <= maxRunes {
+	// Performance: Optimized truncation using utf8.RuneCountInString and range loop
+	// to avoid expensive []rune allocations.
+	if utf8.RuneCountInString(content) <= maxRunes {
 		return content
 	}
-	return string(runes[:maxRunes]) + "\n\n...[truncated]"
+	count := 0
+	for i := range content {
+		if count == maxRunes {
+			return content[:i] + "\n\n...[truncated]"
+		}
+		count++
+	}
+	return content + "\n\n...[truncated]"
 }
