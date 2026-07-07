@@ -509,6 +509,8 @@ func isGibberishLine(line string) bool {
 }
 
 func cleanText(text string, maxLength int) string {
+	// Performance: Optimized truncation using utf8.RuneCountInString and range loop
+	// to avoid expensive []rune allocations. Reduces latency for long articles.
 	text = strings.ReplaceAll(text, "\t", " ")
 	text = strings.ReplaceAll(text, "\r", "")
 
@@ -549,9 +551,15 @@ func cleanText(text string, maxLength int) string {
 	text = strings.Join(cleaned, "\n")
 	text = collapseSpaces(text)
 
-	runes := []rune(text)
-	if len(runes) > maxLength {
-		text = string(runes[:maxLength])
+	if utf8.RuneCountInString(text) > maxLength {
+		count := 0
+		for i := range text {
+			if count == maxLength {
+				text = text[:i]
+				break
+			}
+			count++
+		}
 		if lastSpace := strings.LastIndex(text, " "); lastSpace > 0 {
 			text = text[:lastSpace] + " ..."
 		}

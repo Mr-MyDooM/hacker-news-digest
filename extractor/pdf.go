@@ -18,6 +18,8 @@ func NewPDFExtractor(data []byte, url string) *PDFExtractor {
 }
 
 func (p *PDFExtractor) GetContent(maxLength int) string {
+	// Performance: Optimized truncation using utf8.RuneCountInString and range loop
+	// to avoid expensive []rune allocations.
 	r, err := pdf.NewReader(bytes.NewReader(p.data), int64(len(p.data)))
 	if err != nil {
 		return ""
@@ -56,9 +58,15 @@ func (p *PDFExtractor) GetContent(maxLength int) string {
 
 	text := strings.Join(paragraphs, "\n")
 
-	runes := []rune(text)
-	if len(runes) > maxLength {
-		text = string(runes[:maxLength])
+	if utf8.RuneCountInString(text) > maxLength {
+		count := 0
+		for i := range text {
+			if count == maxLength {
+				text = text[:i]
+				break
+			}
+			count++
+		}
 		if lastSpace := strings.LastIndex(text, " "); lastSpace > 0 {
 			text = text[:lastSpace] + " ..."
 		}
