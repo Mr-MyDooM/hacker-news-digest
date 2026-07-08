@@ -134,6 +134,15 @@ function setupSortHandlers() {
     });
 }
 
+function setupDropdownAccessibility() {
+    $('.dropdown').on('show.bs.dropdown', function() {
+        $(this).find('.dropdown-toggle').attr('aria-expanded', 'true');
+    });
+    $('.dropdown').on('hide.bs.dropdown', function() {
+        $(this).find('.dropdown-toggle').attr('aria-expanded', 'false');
+    });
+}
+
 function setupArchiveHandlers() {
     $('#more-archive').click(function(e) {
         e.preventDefault();
@@ -165,6 +174,7 @@ $(function() {
     setupSortHandlers();
     setupFilterHandlers();
     setupArchiveHandlers();
+    setupDropdownAccessibility();
 
     // Set defaults
     updateDropdownActive($('.sort-dropdown'), 'rank', 'sort');
